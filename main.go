@@ -37,9 +37,17 @@ func init() {
 }
 
 func main() {
+
+	db, err := sql.Open("mysql", os.Getenv("DSN"))
+	if err != nil {
+		log.WithError(err).Fatal("error opening database")
+	}
+
+	defer db.Close()
+
 	addr := ":" + os.Getenv("PORT")
 	app := pat.New()
-	app.Get("/", processPendingInvites)
+	app.Get("/", processPendingInvites(db))
 	if err := http.ListenAndServe(addr, app); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
@@ -106,35 +114,30 @@ func getInvites() (lr listInvitesResponse, err error) {
 	return lr, err
 }
 
-func processPendingInvites(w http.ResponseWriter, r *http.Request) {
+func processPendingInvites(db *sql.DB) http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
 
-	if os.Getenv("UP_STAGE") != "production" {
-		w.Header().Set("X-Robots-Tag", "none")
+		if os.Getenv("UP_STAGE") != "production" {
+			w.Header().Set("X-Robots-Tag", "none")
+		}
+
+		// Input
+		lr, err := getInvites()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		log.Infof("Input %+v", lr)
+
+		err = set(db, lr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response.OK(w, "Worked")
+
 	}
-
-	// Input
-	lr, err := getInvites()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	log.Infof("Input %+v", lr)
-
-	db, err := sql.Open("mysql", os.Getenv("DSN"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer db.Close()
-
-	err = set(db, lr)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	response.OK(w, "Worked")
-
+	return http.HandlerFunc(fn)
 }
