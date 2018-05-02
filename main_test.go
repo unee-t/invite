@@ -5,26 +5,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/apex/log"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
 
 func TestMain(m *testing.M) {
-
-	db, err := sql.Open("mysql", os.Getenv("DSN"))
-	if err != nil {
-		log.WithError(err).Fatal("error opening database")
-	}
-
+	db, _ = sql.Open("mysql", os.Getenv("DSN"))
 	defer db.Close()
-	log.Info("starting test")
-	log.Infof("here testing with %v", db)
-	code := m.Run()
-	log.Info("finished test")
-	os.Exit(code)
-
+	os.Exit(m.Run())
 }
 
 func Test_getRole(t *testing.T) {
@@ -39,7 +28,6 @@ func Test_getRole(t *testing.T) {
 		wantErr          bool
 	}{{
 		"Check Owner/Landlord is 2",
-		// db here is nil, why?
 		args{db: db, roleName: "Owner/Landlord"},
 		2,
 		false,

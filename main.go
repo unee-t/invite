@@ -54,9 +54,7 @@ func main() {
 }
 
 func getRole(db *sql.DB, roleName string) (id_role_type int, err error) {
-	log.Infof("here with %v and rolename %s", db, roleName)
 	err = db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&id_role_type)
-	// log.WithError(err).Error("getting role")
 	return id_role_type, err
 }
 
