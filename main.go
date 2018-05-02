@@ -59,7 +59,7 @@ func set(db *sql.DB, lr listInvitesResponse) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("%s role converted to id: %d", roleID)
+		log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
 		result, err := db.Exec(
 			`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
@@ -106,18 +106,6 @@ func getInvites() (lr listInvitesResponse, err error) {
 	return lr, err
 }
 
-func openDB() (db *sql.DB, err error) {
-	db, err = sql.Open("mysql", os.Getenv("DSN"))
-	if err != nil {
-		return db, err
-	}
-
-	defer db.Close()
-
-	err = db.Ping()
-	return db, err
-}
-
 func processPendingInvites(w http.ResponseWriter, r *http.Request) {
 
 	if os.Getenv("UP_STAGE") != "production" {
@@ -133,11 +121,13 @@ func processPendingInvites(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Input %+v", lr)
 
-	db, err := openDB()
+	db, err := sql.Open("mysql", os.Getenv("DSN"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	defer db.Close()
 
 	err = set(db, lr)
 	if err != nil {
