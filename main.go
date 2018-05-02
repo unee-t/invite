@@ -65,6 +65,16 @@ func set(me string) error {
 	// Error 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'INSERT INTO `ut_test_foo_bar`(`foobar_invitation_id`)
 	// VALUES (@foo_bar_invit' at line 2
 
+	result, err := db.Exec(
+		"INSERT INTO ut_test_foo_bar (foobar_invitation_id) VALUES (?)",
+		"gopher",
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("%v", result)
+
 	var (
 		id   int
 		name string
