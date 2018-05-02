@@ -43,27 +43,23 @@ func main() {
 	if err := http.ListenAndServe(addr, app); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
-
 }
 
-func set(lr listInvitesResponse) error {
+func getRole(db *sql.DB, roleName string) (id_role_type int, err error) {
+	err = db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&id_role_type)
+	return id_role_type, err
+}
 
-	db, err := sql.Open("mysql", os.Getenv("DSN"))
-	if err != nil {
-		return err
-	}
-
-	defer db.Close()
-
-	// Open doesn't open a connection. Validate DSN data:
-	err = db.Ping()
-	if err != nil {
-		log.WithError(err).Error("failed to open database")
-		return err
-	}
+func set(db *sql.DB, lr listInvitesResponse) error {
 
 	for _, invite := range lr {
 		log.Infof("Processing invite: %+v", invite)
+
+		roleID, err := getRole(db, invite.Role)
+		if err != nil {
+			return err
+		}
+		log.Infof("%s role converted to id: %d", roleID)
 
 		result, err := db.Exec(
 			`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
@@ -80,7 +76,7 @@ func set(lr listInvitesResponse) error {
 			invite.ID,
 			invite.InvitedBy,
 			invite.Invitee,
-			invite.Role,
+			roleID,
 			invite.IsOccupant,
 			invite.CaseID,
 			invite.UnitID,
@@ -96,7 +92,7 @@ func set(lr listInvitesResponse) error {
 
 	}
 
-	return err
+	return nil
 
 }
 
@@ -108,6 +104,18 @@ func getInvites() (lr listInvitesResponse, err error) {
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&lr)
 	return lr, err
+}
+
+func openDB() (db *sql.DB, err error) {
+	db, err = sql.Open("mysql", os.Getenv("DSN"))
+	if err != nil {
+		return db, err
+	}
+
+	defer db.Close()
+
+	err = db.Ping()
+	return db, err
 }
 
 func processPendingInvites(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +133,13 @@ func processPendingInvites(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Input %+v", lr)
 
-	err = set(lr)
+	db, err := openDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = set(db, lr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
