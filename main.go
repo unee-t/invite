@@ -53,8 +53,10 @@ func main() {
 
 	defer db.Close()
 
+	h := handler{db: db}
 	addr := ":" + os.Getenv("PORT")
-	http.Handle("/", handler{db: db})
+	http.Handle("/run", http.HandlerFunc(h.runProc))
+	http.Handle("/", http.HandlerFunc(h.handleInvite))
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
@@ -73,7 +75,7 @@ func (h handler) set(lr listInvitesResponse) (result error) {
 
 		roleID, err := h.lookupRoleID(invite.Role)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
 		log.Infof("%s role converted to id: %d", invite.Role, roleID)
@@ -102,7 +104,7 @@ func (h handler) set(lr listInvitesResponse) (result error) {
 			"Use Unee-T for a faster reply",
 		)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
 
@@ -174,7 +176,7 @@ func markInvitesProcessed(ids []string) (err error) {
 
 }
 
-func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h handler) handleInvite(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Robots-Tag", "none")
 
@@ -193,5 +195,19 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.OK(w, "Worked")
+
+}
+
+func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
+
+	var outArg string
+	_, err := h.db.Exec("CALL ProcName")
+	if err != nil {
+		log.WithError(err).Error("running proc")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response.OK(w, outArg)
 
 }
