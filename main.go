@@ -10,13 +10,16 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/text"
-	"github.com/gorilla/pat"
 
 	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// TODO: Maybe put env variables in this this config struct too
+type handler struct{ db *sql.DB }
+
+// {{DOMAIN}}/api/pending-invitations?accessToken={{API_ACCESS_TOKEN}}
 type listInvitesResponse []struct {
 	ID         string `json:"_id"`
 	InvitedBy  int    `json:"invitedBy"`
@@ -46,30 +49,30 @@ func main() {
 	defer db.Close()
 
 	addr := ":" + os.Getenv("PORT")
-	app := pat.New()
-	app.Get("/", processPendingInvites(db))
-	if err := http.ListenAndServe(addr, app); err != nil {
+	http.Handle("/", handler{db: db})
+	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
+
 }
 
-func getRole(db *sql.DB, roleName string) (id_role_type int, err error) {
-	err = db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&id_role_type)
+func (h handler) lookupRoleID(roleName string) (id_role_type int, err error) {
+	err = h.db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&id_role_type)
 	return id_role_type, err
 }
 
-func set(db *sql.DB, lr listInvitesResponse) error {
+func (h handler) set(lr listInvitesResponse) error {
 
 	for _, invite := range lr {
 		log.Infof("Processing invite: %+v", invite)
 
-		roleID, err := getRole(db, invite.Role)
+		roleID, err := h.lookupRoleID(invite.Role)
 		if err != nil {
 			return err
 		}
 		log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
-		result, err := db.Exec(
+		result, err := h.db.Exec(
 			`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
 			bzfe_invitor_user_id,
 			bz_user_id,
@@ -114,30 +117,24 @@ func getInvites() (lr listInvitesResponse, err error) {
 	return lr, err
 }
 
-func processPendingInvites(db *sql.DB) http.HandlerFunc {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-		if os.Getenv("UP_STAGE") != "production" {
-			w.Header().Set("X-Robots-Tag", "none")
-		}
+	w.Header().Set("X-Robots-Tag", "none")
 
-		// Input
-		lr, err := getInvites()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		log.Infof("Input %+v", lr)
-
-		err = set(db, lr)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		response.OK(w, "Worked")
-
+	lr, err := getInvites()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	return http.HandlerFunc(fn)
+
+	log.Infof("Input %+v", lr)
+
+	err = h.set(lr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response.OK(w, "Worked")
+
 }
