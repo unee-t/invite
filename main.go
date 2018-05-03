@@ -6,6 +6,7 @@ import (
 	"os"
 
 	jsonhandler "github.com/apex/log/handlers/json"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
 
 	"github.com/apex/log"
@@ -61,18 +62,19 @@ func (h handler) lookupRoleID(roleName string) (id_role_type int, err error) {
 	return id_role_type, err
 }
 
-func (h handler) set(lr listInvitesResponse) error {
+func (h handler) set(lr listInvitesResponse) (result error) {
 
 	for _, invite := range lr {
 		log.Infof("Processing invite: %+v", invite)
 
 		roleID, err := h.lookupRoleID(invite.Role)
 		if err != nil {
-			return err
+			result = multierror.Append(result, err)
+			continue
 		}
 		log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
-		result, err := h.db.Exec(
+		_, err = h.db.Exec(
 			`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
 			bzfe_invitor_user_id,
 			bz_user_id,
@@ -96,14 +98,13 @@ func (h handler) set(lr listInvitesResponse) error {
 			"Use Unee-T for a faster reply",
 		)
 		if err != nil {
-			return err
+			result = multierror.Append(result, err)
+			continue
 		}
-
-		log.Infof("Exec result %v", result)
 
 	}
 
-	return nil
+	return result
 
 }
 
