@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"github.com/tj/go/http/response"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/text"
 
 	"database/sql"
 
@@ -31,12 +31,11 @@ type listInvitesResponse []struct {
 	Type       string `json:"type"`
 }
 
+var buf bytes.Buffer
+
 func init() {
-	if os.Getenv("UP_STAGE") == "" {
-		log.SetHandler(text.Default)
-	} else {
-		log.SetHandler(jsonhandler.Default)
-	}
+	// log.SetHandler(jsonhandler.Default)
+	log.SetHandler(jsonhandler.New(&buf))
 }
 
 func main() {
@@ -61,14 +60,15 @@ func (h handler) lookupRoleID(roleName string) (id_role_type int, err error) {
 	return id_role_type, err
 }
 
-func (h handler) set(lr listInvitesResponse) error {
+func (h handler) set(lr listInvitesResponse) {
 
 	for _, invite := range lr {
 		log.Infof("Processing invite: %+v", invite)
 
 		roleID, err := h.lookupRoleID(invite.Role)
 		if err != nil {
-			return err
+			log.WithError(err).Warnf("failed to lookup role")
+			continue
 		}
 		log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
@@ -96,14 +96,12 @@ func (h handler) set(lr listInvitesResponse) error {
 			"Use Unee-T for a faster reply",
 		)
 		if err != nil {
-			return err
+			log.WithError(err).Warnf("failed to insert")
+		} else {
+			log.Infof("Exec result %v", result)
 		}
 
-		log.Infof("Exec result %v", result)
-
 	}
-
-	return nil
 
 }
 
@@ -129,12 +127,8 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Input %+v", lr)
 
-	err = h.set(lr)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	h.set(lr)
 
-	response.OK(w, "Worked")
+	response.OK(w, buf.String())
 
 }
