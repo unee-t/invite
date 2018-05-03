@@ -2,8 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	jsonhandler "github.com/apex/log/handlers/json"
 	multierror "github.com/hashicorp/go-multierror"
@@ -116,6 +120,58 @@ func getInvites() (lr listInvitesResponse, err error) {
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&lr)
 	return lr, err
+}
+
+func markInvitesProcessed(ids []string) (err error) {
+
+	jids, err := json.Marshal(ids)
+	if err != nil {
+		log.WithError(err).Error("marshalling")
+		return err
+	}
+
+	// log.Infof("IDs: %s", jids)
+
+	payload := strings.NewReader(string(jids))
+
+	url := os.Getenv("DOMAIN") + "/api/pending-invitations/done?accessToken=" + os.Getenv("API_ACCESS_TOKEN")
+	req, err := http.NewRequest("PUT", url, payload)
+	if err != nil {
+		log.WithError(err).Error("making PUT")
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Cache-Control", "no-cache")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.WithError(err).Error("PUT request")
+		return err
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.WithError(err).Error("reading body")
+		return err
+	}
+
+	i, err := strconv.Atoi(string(body))
+	if err != nil {
+		log.WithError(err).Error("reading body")
+		return err
+	}
+
+	//log.Infof("Response: %v", res)
+	//log.Infof("Num: %d", i)
+	//log.Infof("Body: %s", string(body))
+	if i != len(ids) {
+		return fmt.Errorf("Acted on %d invitations, but %d were submitted", i, len(ids))
+	}
+
+	return
+
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

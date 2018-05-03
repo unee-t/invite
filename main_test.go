@@ -52,3 +52,31 @@ func Test_handler_getRole(t *testing.T) {
 		})
 	}
 }
+
+func Test_markInvitesProcessed(t *testing.T) {
+	type args struct {
+		ids []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{{
+		name:    "Bad id",
+		args:    args{ids: []string{"noway this should exist"}},
+		wantErr: true,
+	},
+		{
+			name:    "No id",
+			args:    args{ids: []string{}},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := markInvitesProcessed(tt.args.ids); (err != nil) != tt.wantErr {
+				t.Errorf("markInvitesProcessed() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
