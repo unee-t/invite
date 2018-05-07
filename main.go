@@ -106,7 +106,10 @@ func (h handler) step2runsql(invite invite) (err error) {
 	if err != nil {
 		return
 	}
-	_, err = h.db.Exec(string(sqlscript))
+	_, err = h.db.Exec(fmt.Sprintf(string(sqlscript), invite.ID))
+	if err != nil {
+		log.WithError(err).Error("running sql failed")
+	}
 	return
 }
 
@@ -127,7 +130,6 @@ func (h handler) processInvite(invites []invite) (result error) {
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
-
 	}
 
 	return result

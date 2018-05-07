@@ -80,3 +80,33 @@ func Test_markInvitesProcessed(t *testing.T) {
 		})
 	}
 }
+
+func Test_handler_step2runsql(t *testing.T) {
+	type fields struct {
+		db *sql.DB
+	}
+	type args struct {
+		invite invite
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{{
+		"Check ID can be set",
+		fields{db: db},
+		args{invite: invite{ID: "KgWBN2H9cX2iFx3nG"}},
+		false,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := handler{
+				db: tt.fields.db,
+			}
+			if err := h.step2runsql(tt.args.invite); (err != nil) != tt.wantErr {
+				t.Errorf("handler.step2runsql() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
