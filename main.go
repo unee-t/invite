@@ -63,25 +63,20 @@ func main() {
 
 }
 
-func (h handler) lookupRoleID(roleName string) (id_role_type int, err error) {
-	err = h.db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&id_role_type)
-	return id_role_type, err
+func (h handler) lookupRoleID(roleName string) (IDRoleType int, err error) {
+	err = h.db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&IDRoleType)
+	return IDRoleType, err
 }
 
-func (h handler) processInvite(invites []invite) (result error) {
+func (h handler) step1Insert(invite invite) (err error) {
+	roleID, err := h.lookupRoleID(invite.Role)
+	if err != nil {
+		return
+	}
+	log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
-	for _, invite := range invites {
-		log.Infof("Processing invite: %+v", invite)
-
-		roleID, err := h.lookupRoleID(invite.Role)
-		if err != nil {
-			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			continue
-		}
-		log.Infof("%s role converted to id: %d", invite.Role, roleID)
-
-		_, err = h.db.Exec(
-			`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
+	_, err = h.db.Exec(
+		`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
 			bzfe_invitor_user_id,
 			bz_user_id,
 			user_role_type_id,
@@ -92,17 +87,42 @@ func (h handler) processInvite(invites []invite) (result error) {
 			is_mefe_only_user,
 			user_more
 		) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-			invite.ID,
-			invite.InvitedBy,
-			invite.Invitee,
-			roleID,
-			invite.IsOccupant,
-			invite.CaseID,
-			invite.UnitID,
-			invite.Type,
-			1,
-			"Use Unee-T for a faster reply",
-		)
+		invite.ID,
+		invite.InvitedBy,
+		invite.Invitee,
+		roleID,
+		invite.IsOccupant,
+		invite.CaseID,
+		invite.UnitID,
+		invite.Type,
+		1,
+		"Use Unee-T for a faster reply",
+	)
+	return
+}
+
+func (h handler) step2runsql(invite invite) (err error) {
+	sqlscript, err := ioutil.ReadFile("sql/process_one_invitation_all_scenario_v3.0.sql")
+	if err != nil {
+		return
+	}
+	_, err = h.db.Exec(string(sqlscript))
+	return
+}
+
+func (h handler) processInvite(invites []invite) (result error) {
+
+	for _, invite := range invites {
+		// Processing invite one by one. If it fails, we move onto next one.
+		log.Infof("Processing invite: %+v", invite)
+
+		err := h.step1Insert(invite)
+		if err != nil {
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+			continue
+		}
+
+		err = h.step2runsql(invite)
 		if err != nil {
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
