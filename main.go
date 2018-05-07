@@ -25,7 +25,7 @@ import (
 type handler struct{ db *sql.DB }
 
 // {{DOMAIN}}/api/pending-invitations?accessToken={{API_ACCESS_TOKEN}}
-type listInvitesResponse []struct {
+type invite struct {
 	ID         string `json:"_id"`
 	InvitedBy  int    `json:"invitedBy"`
 	Invitee    int    `json:"invitee"`
@@ -68,9 +68,9 @@ func (h handler) lookupRoleID(roleName string) (id_role_type int, err error) {
 	return id_role_type, err
 }
 
-func (h handler) set(lr listInvitesResponse) (result error) {
+func (h handler) processInvite(invites []invite) (result error) {
 
-	for _, invite := range lr {
+	for _, invite := range invites {
 		log.Infof("Processing invite: %+v", invite)
 
 		roleID, err := h.lookupRoleID(invite.Role)
@@ -114,7 +114,7 @@ func (h handler) set(lr listInvitesResponse) (result error) {
 
 }
 
-func getInvites() (lr listInvitesResponse, err error) {
+func getInvites() (lr []invite, err error) {
 	resp, err := http.Get(os.Getenv("DOMAIN") + "/api/pending-invitations?accessToken=" + os.Getenv("API_ACCESS_TOKEN"))
 	if err != nil {
 		return lr, err
@@ -178,17 +178,17 @@ func markInvitesProcessed(ids []string) (err error) {
 
 func (h handler) handleInvite(w http.ResponseWriter, r *http.Request) {
 
-	w.Header().Set("X-Robots-Tag", "none")
+	w.Header().Set("X-Robots-Tag", "none") // We don't want Google to index us
 
-	lr, err := getInvites()
+	invites, err := getInvites()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Infof("Input %+v", lr)
+	log.Infof("Input %+v", invites)
 
-	err = h.set(lr)
+	err = h.processInvite(invites)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
