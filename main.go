@@ -101,8 +101,8 @@ func (h handler) step1Insert(invite invite) (err error) {
 	return
 }
 
-func (h handler) step2runsql(invite invite) (err error) {
-	sqlscript, err := ioutil.ReadFile("sql/process_one_invitation_all_scenario_v3.0.sql")
+func (h handler) runsql(sqlfile string, invite invite) (err error) {
+	sqlscript, err := ioutil.ReadFile(fmt.Sprintf("sql/%s", sqlfile))
 	if err != nil {
 		return
 	}
@@ -119,13 +119,29 @@ func (h handler) processInvite(invites []invite) (result error) {
 		// Processing invite one by one. If it fails, we move onto next one.
 		log.Infof("Processing invite: %+v", invite)
 
+		// Step 1
 		err := h.step1Insert(invite)
 		if err != nil {
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
 
-		err = h.step2runsql(invite)
+		// Step 2
+		err = h.runsql("1_process_one_invitation_all_scenario_v3.0.sql", invite)
+		if err != nil {
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+			continue
+		}
+
+		// Step 3
+		err = markInvitesProcessed([]string{invite.ID})
+		if err != nil {
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+			continue
+		}
+
+		// Step 4
+		err = h.runsql("2_add_invitation_sent_message_to_a_case_v3.0.sql", invite)
 		if err != nil {
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
@@ -154,7 +170,7 @@ func markInvitesProcessed(ids []string) (err error) {
 		return err
 	}
 
-	// log.Infof("IDs: %s", jids)
+	log.Infof("Marking as done: %s", jids)
 
 	payload := strings.NewReader(string(jids))
 

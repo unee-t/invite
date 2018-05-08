@@ -7,10 +7,10 @@
 #################################################################
 #
 # The MEFE invitation id that we want to finalize:
-	SET @mefe_invitation_id = 'enter_MEFE_unique_invitation_id';
+	SET @mefe_invitation_id = '%s';
 #
 # The Timestamp when the MEFE invitation was sent:
-	SET @mefe_invitation_sent = 'datetime_when_invitation_was_sent';
+	SET @mefe_invitation_sent = NOW();
 #
 ########################################################################
 #
