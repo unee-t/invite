@@ -19,13 +19,15 @@ deploy:
       branch: master
  # demo
  - provider: script
-   script: AWS_ACCESS_KEY_ID=$AWS_915001051872_ID AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET up
+   script: jq '.stages.staging.domain |= "processinvites.demo.unee-t.com"' up.json > /tmp/up.json && mv /tmp/up.json up.json &&
+   AWS_ACCESS_KEY_ID=$AWS_915001051872_ID AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET up
    skip_cleanup: true
    on:
       branch: master
  # production
  - provider: script
-   script: AWS_ACCESS_KEY_ID=$AWS_192458993663_ID AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET up
+   script: jq '.stages.staging.domain |= "processinvites.unee-t.com"' up.json > /tmp/up.json && mv /tmp/up.json up.json &&
+   AWS_ACCESS_KEY_ID=$AWS_192458993663_ID AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET up
    skip_cleanup: true
    on:
       branch: master
