@@ -60,16 +60,16 @@ func udomain(svc string, stage string) string {
 	return fmt.Sprintf("%s.%s.unee-t.com", svc, stage)
 }
 
-func main() {
+// New setups the configuration assuming various parameters have been setup in the AWS account
+func New() (h handler, err error) {
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
 	if err != nil {
-		log.WithError(err).Error("failed to load config")
 		return
 	}
 	ssm := ssm.New(cfg)
 
-	h := handler{
+	h = handler{
 		DSN: fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
 			getSecret(ssm, "MYSQL_PASSWORD"),
 			udomain("auroradb", getSecret(ssm, "STAGE"))),
@@ -82,6 +82,19 @@ func main() {
 	h.db, err = sql.Open("mysql", h.DSN)
 	if err != nil {
 		log.WithError(err).Fatal("error opening database")
+		return
+	}
+
+	return
+
+}
+
+func main() {
+
+	h, err := New()
+	if err != nil {
+		log.WithError(err).Fatal("error setting configuration")
+		return
 	}
 
 	defer h.db.Close()
