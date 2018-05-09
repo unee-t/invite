@@ -1,7 +1,13 @@
 {
-  "name": "processinvitations",
-  "regions": [
-    "ap-southeast-1"
-  ],
-  "error_pages": { "disable": true }
+	"name": "processinvitations",
+	"profile": "uneet-dev",
+	"stages": {
+		"staging": {
+			"domain": "processinvites.dev.unee-t.com"
+		}
+	},
+	"regions": [
+		"ap-southeast-1"
+	],
+	"error_pages": { "disable": true }
 }

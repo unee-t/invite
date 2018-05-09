@@ -2,16 +2,29 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
 
 func TestMain(m *testing.M) {
-	db, _ = sql.Open("mysql", os.Getenv("DSN"))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
+	if err != nil {
+		log.WithError(err).Error("failed to load config")
+		return
+	}
+	ssm := ssm.New(cfg)
+
+	db, _ = sql.Open("mysql", fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
+		getSecret(ssm, "MYSQL_PASSWORD"),
+		udomain("auroradb", getSecret(ssm, "STAGE"))))
 	defer db.Close()
 	os.Exit(m.Run())
 }
@@ -48,34 +61,6 @@ func Test_handler_getRole(t *testing.T) {
 			}
 			if gotId_role_type != tt.wantId_role_type {
 				t.Errorf("handler.getRole() = %v, want %v", gotId_role_type, tt.wantId_role_type)
-			}
-		})
-	}
-}
-
-func Test_markInvitesProcessed(t *testing.T) {
-	type args struct {
-		ids []string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{{
-		name:    "Bad id",
-		args:    args{ids: []string{"noway this should exist"}},
-		wantErr: true,
-	},
-		{
-			name:    "No id",
-			args:    args{ids: []string{}},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := markInvitesProcessed(tt.args.ids); (err != nil) != tt.wantErr {
-				t.Errorf("markInvitesProcessed() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

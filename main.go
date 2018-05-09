@@ -10,6 +10,10 @@ import (
 	"strings"
 
 	jsonhandler "github.com/apex/log/handlers/json"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm/ssmiface"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
 
@@ -22,7 +26,12 @@ import (
 )
 
 // TODO: Maybe put env variables in this this config struct too
-type handler struct{ db *sql.DB }
+type handler struct {
+	DSN            string // e.g. "bugzilla:secret@tcp(auroradb.dev.unee-t.com:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL"
+	Domain         string // e.g. https://dev.case.unee-t.com
+	APIAccessToken string // e.g. O8I9svDTizOfLfdVA5ri
+	db             *sql.DB
+}
 
 // {{DOMAIN}}/api/pending-invitations?accessToken={{API_ACCESS_TOKEN}}
 type invite struct {
@@ -44,16 +53,39 @@ func init() {
 	}
 }
 
+func udomain(svc string, stage string) string {
+	if stage == "" {
+		return fmt.Sprintf("%s.unee-t.com", svc)
+	}
+	return fmt.Sprintf("%s.%s.unee-t.com", svc, stage)
+}
+
 func main() {
 
-	db, err := sql.Open("mysql", os.Getenv("DSN"))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
+	if err != nil {
+		log.WithError(err).Error("failed to load config")
+		return
+	}
+	ssm := ssm.New(cfg)
+
+	h := handler{
+		DSN: fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
+			getSecret(ssm, "MYSQL_PASSWORD"),
+			udomain("auroradb", getSecret(ssm, "STAGE"))),
+		Domain:         fmt.Sprintf("https://%s", udomain("case", getSecret(ssm, "STAGE"))),
+		APIAccessToken: getSecret(ssm, "API_ACCESS_TOKEN"),
+	}
+
+	log.Infof("Configuration: %v", h)
+
+	h.db, err = sql.Open("mysql", h.DSN)
 	if err != nil {
 		log.WithError(err).Fatal("error opening database")
 	}
 
-	defer db.Close()
+	defer h.db.Close()
 
-	h := handler{db: db}
 	addr := ":" + os.Getenv("PORT")
 	http.Handle("/run", http.HandlerFunc(h.runProc))
 	http.Handle("/", http.HandlerFunc(h.handleInvite))
@@ -134,7 +166,7 @@ func (h handler) processInvite(invites []invite) (result error) {
 		}
 
 		// Step 3
-		err = markInvitesProcessed([]string{invite.ID})
+		err = h.markInvitesProcessed([]string{invite.ID})
 		if err != nil {
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
@@ -152,8 +184,8 @@ func (h handler) processInvite(invites []invite) (result error) {
 
 }
 
-func getInvites() (lr []invite, err error) {
-	resp, err := http.Get(os.Getenv("DOMAIN") + "/api/pending-invitations?accessToken=" + os.Getenv("API_ACCESS_TOKEN"))
+func (h handler) getInvites() (lr []invite, err error) {
+	resp, err := http.Get(h.Domain + "/api/pending-invitations?accessToken=" + h.APIAccessToken)
 	if err != nil {
 		return lr, err
 	}
@@ -162,7 +194,7 @@ func getInvites() (lr []invite, err error) {
 	return lr, err
 }
 
-func markInvitesProcessed(ids []string) (err error) {
+func (h handler) markInvitesProcessed(ids []string) (err error) {
 
 	jids, err := json.Marshal(ids)
 	if err != nil {
@@ -174,7 +206,7 @@ func markInvitesProcessed(ids []string) (err error) {
 
 	payload := strings.NewReader(string(jids))
 
-	url := os.Getenv("DOMAIN") + "/api/pending-invitations/done?accessToken=" + os.Getenv("API_ACCESS_TOKEN")
+	url := h.Domain + "/api/pending-invitations/done?accessToken=" + h.APIAccessToken
 	req, err := http.NewRequest("PUT", url, payload)
 	if err != nil {
 		log.WithError(err).Error("making PUT")
@@ -218,7 +250,7 @@ func (h handler) handleInvite(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Robots-Tag", "none") // We don't want Google to index us
 
-	invites, err := getInvites()
+	invites, err := h.getInvites()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -248,4 +280,17 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 	response.OK(w, outArg)
 
+}
+
+func getSecret(ssmapi ssmiface.SSMAPI, store string) string {
+	in := &ssm.GetParameterInput{
+		Name:           aws.String(store),
+		WithDecryption: aws.Bool(true),
+	}
+	req := ssmapi.GetParameterRequest(in)
+	out, err := req.Send()
+	if err != nil {
+		return ""
+	}
+	return aws.StringValue(out.Parameter.Value)
 }
