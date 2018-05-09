@@ -100,7 +100,7 @@ func main() {
 	defer h.db.Close()
 
 	addr := ":" + os.Getenv("PORT")
-	http.Handle("/run", http.HandlerFunc(h.runProc))
+	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.Handle("/", http.HandlerFunc(h.handleInvite))
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.WithError(err).Fatal("error listening")
