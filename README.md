@@ -1,5 +1,7 @@
 [Process Invitations in the BZ database](https://github.com/unee-t/bugzilla-customisation/wiki/Process-Invitations-in-the-BZ-database)
 
+[![Build Status](https://travis-ci.org/unee-t/processInvitations.svg?branch=master)](https://travis-ci.org/unee-t/processInvitations)
+
 ## dev environment
 
 * AWS account id: 812644853088
