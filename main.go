@@ -10,13 +10,11 @@ import (
 	"strings"
 
 	jsonhandler "github.com/apex/log/handlers/json"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/aws/aws-sdk-go-v2/service/ssm/ssmiface"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
+	"github.com/unee-t/env"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/text"
@@ -31,6 +29,7 @@ type handler struct {
 	Domain         string // e.g. https://dev.case.unee-t.com
 	APIAccessToken string // e.g. O8I9svDTizOfLfdVA5ri
 	db             *sql.DB
+	Code           env.EnvCode
 }
 
 // {{DOMAIN}}/api/pending-invitations?accessToken={{API_ACCESS_TOKEN}}
@@ -53,13 +52,6 @@ func init() {
 	}
 }
 
-func udomain(svc string, stage string) string {
-	if stage == "" {
-		return fmt.Sprintf("%s.unee-t.com", svc)
-	}
-	return fmt.Sprintf("%s.%s.unee-t.com", svc, stage)
-}
-
 // New setups the configuration assuming various parameters have been setup in the AWS account
 func New() (h handler, err error) {
 
@@ -69,18 +61,21 @@ func New() (h handler, err error) {
 		return
 	}
 	cfg.Region = endpoints.ApSoutheast1RegionID
-	ssm := ssm.New(cfg)
-	log.Infof("Stage: %s", getSecret(ssm, "STAGE"))
+	e, err := env.New(cfg)
+	if err != nil {
+		log.WithError(err).Fatal("error getting unee-t env")
+	}
+	log.Infof("Code: %d", e.Code)
 
 	h = handler{
 		DSN: fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
-			getSecret(ssm, "MYSQL_PASSWORD"),
-			udomain("auroradb", getSecret(ssm, "STAGE"))),
-		Domain:         fmt.Sprintf("https://%s", udomain("case", getSecret(ssm, "STAGE"))),
-		APIAccessToken: getSecret(ssm, "API_ACCESS_TOKEN"),
+			e.GetSecret("MYSQL_PASSWORD"),
+			e.Udomain("auroradb")),
+		Domain:         fmt.Sprintf("https://%s", e.Udomain("case")),
+		APIAccessToken: e.GetSecret("API_ACCESS_TOKEN"),
 	}
 
-	log.Infof("Stage configuration: %v", h.Domain)
+	log.Infof("Frontend URL: %v", h.Domain)
 
 	h.db, err = sql.Open("mysql", h.DSN)
 	if err != nil {
@@ -154,7 +149,7 @@ func (h handler) runsql(sqlfile string, invite invite) (err error) {
 	if err != nil {
 		return
 	}
-	_, err = h.db.Exec(fmt.Sprintf(string(sqlscript), invite.ID))
+	_, err = h.db.Exec(fmt.Sprintf(string(sqlscript), invite.ID, h.Code))
 	if err != nil {
 		log.WithError(err).Error("running sql failed")
 	}
@@ -296,18 +291,4 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 	response.OK(w, outArg)
 
-}
-
-func getSecret(ssmapi ssmiface.SSMAPI, store string) string {
-	in := &ssm.GetParameterInput{
-		Name:           aws.String(store),
-		WithDecryption: aws.Bool(true),
-	}
-	req := ssmapi.GetParameterRequest(in)
-	out, err := req.Send()
-	if err != nil {
-		log.WithError(err).Fatal("failed ssm request")
-		return ""
-	}
-	return aws.StringValue(out.Parameter.Value)
 }

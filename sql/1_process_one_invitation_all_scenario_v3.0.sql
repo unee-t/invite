@@ -13,7 +13,7 @@
 #	- 1 is for the DEV/Staging
 #	- 2 is for the prod environment
 #	- 3 is for the Demo environment
-	SET @environment = 1;
+	SET @environment = %d;
 #
 ########################################################################
 #

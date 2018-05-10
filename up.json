@@ -1,10 +1,10 @@
 {
 	"name": "processinvitations",
-	"profile": "uneet-dev",
+	"profile": "uneet-demo",
 	"stages": {
 		"staging": {
-			"domain": "processinvites.dev.unee-t.com",
-			"zone": "dev.unee-t.com"
+			"domain": "processinvites.demo.unee-t.com",
+			"zone": "demo.unee-t.com"
 		}
 	},
 	"regions": [
