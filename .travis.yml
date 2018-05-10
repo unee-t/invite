@@ -13,7 +13,7 @@ script:
 deploy:
  # dev
  - provider: script
-   script: up
+   script: jq '.stages.staging.domain |= "processinvites.dev.unee-t.com"' up.json > /tmp/up.json && mv /tmp/up.json up.json && up
    skip_cleanup: true
    on:
       branch: master

@@ -1,25 +1,27 @@
 {
-	"name": "processinvitations",
-	"profile": "uneet-demo",
-	"stages": {
-		"staging": {
-			"domain": "processinvites.demo.unee-t.com",
-			"zone": "demo.unee-t.com"
-		}
-	},
-	"regions": [
-		"ap-southeast-1"
-	],
-	"error_pages": { "disable": true },
-	"lambda": {
-		"policy": [
-			{
-				"Effect": "Allow",
-				"Resource": "*",
-				"Action": [
-					"ssm:GetParameter"
-		]
-			}
-		]
-	}
+  "name": "processinvitations",
+  "profile": "uneet-dev",
+  "stages": {
+    "staging": {
+      "domain": "processinvites.dev.unee-t.com",
+      "zone": "dev.unee-t.com"
+    }
+  },
+  "regions": [
+    "ap-southeast-1"
+  ],
+  "error_pages": {
+    "disable": true
+  },
+  "lambda": {
+    "policy": [
+      {
+        "Effect": "Allow",
+        "Resource": "*",
+        "Action": [
+          "ssm:GetParameter"
+        ]
+      }
+    ]
+  }
 }
