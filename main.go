@@ -26,7 +26,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// TODO: Maybe put env variables in this this config struct too
 type handler struct {
 	DSN            string // e.g. "bugzilla:secret@tcp(auroradb.dev.unee-t.com:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL"
 	Domain         string // e.g. https://dev.case.unee-t.com

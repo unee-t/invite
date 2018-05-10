@@ -10,5 +10,16 @@
 	"regions": [
 		"ap-southeast-1"
 	],
-	"error_pages": { "disable": true }
+	"error_pages": { "disable": true },
+	"lambda": {
+		"policy": [
+			{
+				"Effect": "Allow",
+				"Resource": "*",
+				"Action": [
+					"ssm:GetParameter"
+		]
+			}
+		]
+	}
 }
