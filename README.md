@@ -2,6 +2,10 @@
 
 [![Build Status](https://travis-ci.org/unee-t/processInvitations.svg?branch=master)](https://travis-ci.org/unee-t/processInvitations)
 
+# Different environments
+
+This is codified over at: https://github.com/unee-t/env
+
 ## dev environment
 
 * AWS account id: 812644853088
@@ -19,8 +23,3 @@
 * AWS account id: 192458993663
 * profile: uneet-prod
 * https://processinvites.unee-t.com
-
-# Assumptions
-
-Assumed STAGE is defined as a parameter in the AWS System Manager's parameter
-store. Perhaps we should use Account IDs instead?
