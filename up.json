@@ -3,7 +3,8 @@
 	"profile": "uneet-dev",
 	"stages": {
 		"staging": {
-			"domain": "processinvites.dev.unee-t.com"
+			"domain": "processinvites.dev.unee-t.com",
+			"zone": "dev.unee-t.com"
 		}
 	},
 	"regions": [

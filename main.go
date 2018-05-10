@@ -11,6 +11,7 @@ import (
 
 	jsonhandler "github.com/apex/log/handlers/json"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/ssm/ssmiface"
@@ -65,9 +66,12 @@ func New() (h handler, err error) {
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
 	if err != nil {
+		log.WithError(err).Fatal("setting up credentials")
 		return
 	}
+	cfg.Region = endpoints.ApSoutheast1RegionID
 	ssm := ssm.New(cfg)
+	log.Infof("Stage: %s", getSecret(ssm, "STAGE"))
 
 	h = handler{
 		DSN: fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
@@ -77,7 +81,7 @@ func New() (h handler, err error) {
 		APIAccessToken: getSecret(ssm, "API_ACCESS_TOKEN"),
 	}
 
-	log.Infof("Configuration: %v", h)
+	log.Infof("Stage configuration: %v", h.Domain)
 
 	h.db, err = sql.Open("mysql", h.DSN)
 	if err != nil {
@@ -303,6 +307,7 @@ func getSecret(ssmapi ssmiface.SSMAPI, store string) string {
 	req := ssmapi.GetParameterRequest(in)
 	out, err := req.Send()
 	if err != nil {
+		log.WithError(err).Fatal("failed ssm request")
 		return ""
 	}
 	return aws.StringValue(out.Parameter.Value)
