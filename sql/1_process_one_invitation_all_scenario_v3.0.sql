@@ -124,7 +124,15 @@
 
 	# We populate the additional variables that we will need for this script to work:
 		SET @creator_pub_name = (SELECT `realname` FROM `profiles` WHERE `userid` = @creator_bz_id);
-	
+
+# Role in this unit for the invited user:
+	#	- Tenant 1
+	# 	- Landlord 2
+	#	- Agent 5
+	#	- Contractor 3
+	#	- Management company 4
+	SET @id_role_type = (SELECT `user_role_type_id` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
+		
 # The user who you want to associate to this unit - BZ user id of the user that you want to associate/invite to the unit.
 	SET @bz_user_id = (SELECT `bz_user_id` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
 
@@ -138,13 +146,7 @@
 								;
 		SET @user_role_desc = (CONCAT(@role_user_g_description, ' - ',@role_user_pub_info));
 	
-# Role in this unit for the invited user:
-	#	- Tenant 1
-	# 	- Landlord 2
-	#	- Agent 5
-	#	- Contractor 3
-	#	- Management company 4
-	SET @id_role_type = (SELECT `user_role_type_id` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
+
 	SET @role_user_more = (SELECT `user_more` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
 	SET @user_role_type_description = (SELECT `bz_description` FROM `ut_role_types` WHERE `id_role_type` = @id_role_type);
 	SET @user_role_type_name = (SELECT `role_type` FROM `ut_role_types` WHERE `id_role_type` = @id_role_type);
