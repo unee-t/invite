@@ -159,12 +159,18 @@ func (h handler) runsql(sqlfile string, invite invite) (err error) {
 func (h handler) processInvite(invites []invite) (result error) {
 
 	for _, invite := range invites {
+
+		ctx := log.WithFields(log.Fields{
+			"invite": invite,
+		})
+
 		// Processing invite one by one. If it fails, we move onto next one.
-		log.Infof("Processing invite: %+v", invite)
+		ctx.Info("Processing invite")
 
 		// Step 1
 		err := h.step1Insert(invite)
 		if err != nil {
+			ctx.WithError(err).Error("failed to run step1Insert")
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
@@ -172,6 +178,7 @@ func (h handler) processInvite(invites []invite) (result error) {
 		// Step 2
 		err = h.runsql("1_process_one_invitation_all_scenario_v3.0.sql", invite)
 		if err != nil {
+			ctx.WithError(err).Error("failed to run 1_process_one_invitation_all_scenario_v3.0.sql")
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
@@ -179,6 +186,7 @@ func (h handler) processInvite(invites []invite) (result error) {
 		// Step 3
 		err = h.markInvitesProcessed([]string{invite.ID})
 		if err != nil {
+			ctx.WithError(err).Error("failed to run mark invite as processed")
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
@@ -186,6 +194,7 @@ func (h handler) processInvite(invites []invite) (result error) {
 		// Step 4
 		err = h.runsql("2_add_invitation_sent_message_to_a_case_v3.0.sql", invite)
 		if err != nil {
+			ctx.WithError(err).Error("failed to run 2_add_invitation_sent_message_to_a_case_v3.0.sql")
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 			continue
 		}
