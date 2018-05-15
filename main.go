@@ -65,7 +65,6 @@ func New() (h handler, err error) {
 	if err != nil {
 		log.WithError(err).Fatal("error getting unee-t env")
 	}
-	log.Infof("Code: %d", e.Code)
 
 	h = handler{
 		DSN: fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
@@ -73,6 +72,12 @@ func New() (h handler, err error) {
 			e.Udomain("auroradb")),
 		Domain:         fmt.Sprintf("https://%s", e.Udomain("case")),
 		APIAccessToken: e.GetSecret("API_ACCESS_TOKEN"),
+		Code:           e.Code,
+	}
+
+	if h.Code == 0 {
+		err = fmt.Errorf("Error code is unknown/unset")
+		return
 	}
 
 	log.Infof("Frontend URL: %v", h.Domain)
@@ -149,6 +154,7 @@ func (h handler) runsql(sqlfile string, invite invite) (err error) {
 	if err != nil {
 		return
 	}
+	log.Infof("Running %s with invite id %s with env %d", sqlfile, invite.ID, h.Code)
 	_, err = h.db.Exec(fmt.Sprintf(string(sqlscript), invite.ID, h.Code))
 	if err != nil {
 		log.WithError(err).Error("running sql failed")
