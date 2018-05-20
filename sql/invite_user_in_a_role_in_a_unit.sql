@@ -1,6 +1,8 @@
 # For any question about this script, ask Franck
 #
-# This script needs that the data for the invitation are created in the table `ut_invitation_api_data`
+# This script needs that:
+#	- The data for the invitation are created in the table `ut_invitation_api_data`
+#	- The schema of the BZ database is v3.7+
 #
 #################################################################
 #																#
@@ -56,7 +58,7 @@
 #				- IF the user is a MEFE user only 
 #				  Then disable the mail sending functionality from the BZFE.
 #		- The type of invitation for this user
-#WIP (a procedure for that is missing)		- 'replace_default': Remove and Replace: 
+#		- 'replace_default': Remove and Replace: 
 #				- Grant the permissions to the inviter user for this role for this unit
 #				and 
 #				- Remove the existing default user for this role
@@ -72,6 +74,12 @@
 #				- Grant the permissions to the inviter user for this role for this unit
 #				and 
 #				- Keep the existing default user as default
+#				and
+#				- Check if this new user is the first in this role for this unit.
+#					- If it IS the first in this role for this unit.
+#				 	  Then Replace the Default 'dummy user' for this specific role with the BZ user in CC for this role for this unit.
+#					- If it is NOT the first in this role for this unit.
+#					  Do Nothing
 #		- Other or no information about the type of invitation
 #				- Grant the permissions to the inviter user for this role for this unit
 #				and
@@ -508,33 +516,33 @@
 #		- @is_mefe_only_user
 #		- @role_user_more
 	CALL `update_assignee_if_dummy_user`;
+
+# Make the invited user default CC for all cases in this unit if needed
+# This procedure needs the following objects:
+#	- variables:
+#		- @bz_user_id
+#		- @product_id
+#		- @component_id
+#		- @role_user_g_description
+	# Make sure the variable we need is correctly defined
+		SET @component_id = @component_id_this_role;
 	
-##############
-#
-#	WIP - We need to move this into conditional procedures
-#	These procedures will be called based on the value of the field `invitation_type` in the table `ut_invitation_api_data`
-#
-##############	
+	# Run the procedure
+		CALL `user_in_default_cc_for_cases`;	
 
-
-	# Make the invited user default CC for all cases in this unit if needed
-	# This procedure needs the following objects:
-	#	- variables:
-	#		- @bz_user_id
-	#		- @product_id
-	#		- @component_id
-	#		- @role_user_g_description
-		# Make sure the variable we need is correctly defined
-			SET @component_id = @component_id_this_role;
-		
-		# Run the procedure
-			CALL `user_in_default_cc_for_cases`;
-
-##############
-#
-#	END WIP - We need to move this into conditional procedures
-#
-##############	
+# Make the invited user the new default assignee for all cases in this role in this unit if needed
+# This procedure needs the following objects:
+#	- variables:
+#		- @replace_default_assignee
+#		- @bz_user_id
+#		- @product_id
+#		- @component_id
+#		- @role_user_g_description
+	# Make sure the variable we need is correctly defined
+		SET @component_id = @component_id_this_role;
+	
+	# Run the procedure
+		CALL `user_is_default_assignee_for_cases`;
 
 # Update the table 'ut_invitation_api_data' so we record what we have done
 
