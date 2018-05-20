@@ -1,7 +1,6 @@
 # For any question about this script, ask Franck
 #
-# This script needs that the data for the invitation are created in the table `ut_data_to_replace_dummy_roles`
-#
+# This script needs that the data for the invitation are created in the table `ut_invitation_api_data`
 #
 #################################################################
 #																#
@@ -18,19 +17,20 @@
 #	- 3 is for the Demo environment
 	SET @environment = %d;
 #
+# Info about this script
+	SET @this_script = 'invite_user_in_a_role_in_a_unit.sql';
+#
 ########################################################################
 #
 #	ALL THE VARIABLES WE NEED HAVE BEEN DEFINED, WE CAN RUN THE SCRIPT #
 #
 ########################################################################
 #
-#
 #############################################
 #											#
 # IMPORTANT INFORMATION ABOUT THIS SCRIPT	#
 #											#
 #############################################
-#
 #
 # Use this script only if the Unit EXIST in the BZFE 
 # It assumes that the unit has been created with all the necessary BZ objects and all the roles assigned to dummy users.
@@ -40,21 +40,57 @@
 # 	- We know the MEFE Invitation id that we need to process.
 #	- We know the environment where this script is run
 # 
-# This script depends on several SQL procedures:
-#	- Check if this new user is the first in this role for this unit.
-#		- If it IS the first in this role for this unit.
-#		 	- Replace the Default 'dummy user' for a specific role with the BZ user in CC for this role for this unit.
-#		- If it is NOT the first in this role for this unit.
-#			- Do NOT replace the Default assignee for this component/role
-#	- Reset the permissions for this unit for this user to the default permissions
-#	- WIP Remove this user from the list of user in default CC for a case for this role in this unit.
+# This script will:
+#	- Create a temp table to store the permissions we are creating
+#	- Reset things for this user for this unit:
+#		- Remove all the permissions for this unit for this user.
+#WIP 	- Remove this user from the list of user in default CC for a case for this role in this unit.
+#	- Get the information needed from the table `ut_invitation_api_data`
+#		- BZ Invitor id
+#		- BZ unit id
+#		- The invited user:
+#			- BZ invited id
+#			- The role in this unit for the invited user
+#			- Is the invited user an occupant of the unit or not.
+#			- Is the user is a MEFE user only:
+#				- IF the user is a MEFE user only 
+#				  Then disable the mail sending functionality from the BZFE.
+#		- The type of invitation for this user
+#WIP		- Remove and Replace: 
+#				- Remove the existing default user for this role
+#				and 
+#				- Replace the default user for this role 
+#WIP		- Keep existing and Add invited
+#				- Keep the existing default user as default
+#				and
+#				- Grant the permissions to the inviter user for this role for this unit
+#WIP		- Keep existing, Add invited and make invited default CC
+#				- Keep the existing default user as default
+#				and
+#				- Grant the permissions to the inviter user for this role for this unit
+#				and
+#				- Make the invited user an automatic CC to all the new cases for this role for this unit
+#WIP		- Other or no information about the type of invitation
+#				- Check if this new user is the first in this role for this unit.
+#				- If it IS the first in this role for this unit.
+#			 	  Then Replace the Default 'dummy user' for this specific role with the BZ user in CC for this role for this unit.
+#				- If it is NOT the first in this role for this unit.
+#				  Do Nothing
+#	- Process the invitation accordingly.
+#	- Delete an re-create all the entries for the table `user_groups`
+#	- Log the action of the scripts that are run
+#	- Update the invitation once the 
+#	- Exit with either:
+#		- an error message (there was a problem somewhere)
+#		or 
+#		- no error message (succcess)
+#
 #
 #
 #	- Add an existing BZ user as ASSIGNEE to an existing case which has already been created.
 #	- Add a comment in the table 'longdesc' to the case to explain that the invitation has been sent to the invited user
 #	- Record the change of assignee in the bug activity table so that we have history
 #	- Does NOT update the bug_user_last_visit table as the user had no action in there.
-#	- Check if the user is a MEFE user only and IF the user is a MEFE user only disable the mail sending functionality from the BZFE.
 #
 # Limits of this script:
 #	- Unit must have all roles created with Dummy user roles.
@@ -83,9 +119,6 @@
 	
 	# Do we need to make the invitee a default CC for all new cases for this role in this unit?
 		SET @user_in_default_cc_for_cases = 0;
-
-# Info about this script
-	SET @this_script = 'process_one_invitation_all_scenario_v3.0.sql';
 
 # Timestamp	
 	SET @timestamp = NOW();
@@ -227,9 +260,6 @@
 	
 # Is the invited user an occupant of the unit?
 	SET @is_occupant = (SELECT `is_occupant` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
-
-# The case id
-	SET @bz_case_id = (SELECT `bz_case_id` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
 	
 # What type of invitation is this?
 	SET @invitation_type = (SELECT `invitation_type` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
@@ -260,8 +290,8 @@
 #
 #################################################################
 
-# This is legacy and we keep this alive for now:
-# The user
+# We are recording this for KPI measurements
+#	- Number of user per role per unit.
 
 	# We record the information about the users that we have just created
 	# If this is the first time we record something for this user for this unit, we create a new record.
@@ -332,7 +362,7 @@
 			, CONCAT('On '
 					, @timestamp
 					, ': Created with the script - '
-					, @script
+					, @this_script
 					, '.\r\ '
 					, `comment`)
 			)
@@ -359,8 +389,19 @@
 			, `can_decide_if_user_visible` = 0
 			, `can_decide_if_user_can_see_visible` = 0
 			, `public_name` = @user_pub_name
-			, `more_info` = CONCAT('On: ', @timestamp, '.\r\Updated to ', @role_user_more, '. \r\ ', `more_info`)
-			, `comment` = CONCAT('On ', @timestamp, '.\r\Updated with the script - ', @script, '.\r\ ', `comment`)
+			, `more_info` = CONCAT('On: '
+				, @timestamp
+				, '.\r\Updated to '
+				, @role_user_more
+				, '. \r\ '
+				, `more_info`
+				)
+			, `comment` = CONCAT('On '
+				, @timestamp
+				, '.\r\Updated with the script - '
+				, @this_script
+				, '.\r\ '
+				, `comment`)
 		;
 
 # Create the table to prepare the permissions
@@ -430,56 +471,57 @@
 #		- This NEEDS the table 'ut_user_group_map_temp'
 	CALL `update_permissions_invited_user`;
 	
-# Change the assignee for the case if needed
-# This procedure needs the following objects:
-#	- variables:
-#		- @bz_user_id
-#		- @creator_bz_id
-#		- @bz_case_id
-	CALL `change_case_assignee`;
-
-# Add the invited user in CC of the case if needed
-# This procedure needs the following objects:
-#	- variables:
-	CALL `add_invitee_in_cc`;
-	
-# Replace the default user for this role if needed
-# This procedure needs the following objects:
-#	- variables:
-#		- @is_current_assignee_this_role_a_dummy_user
-#		- @component_id_this_role
-#		- @bz_user_id
-#		- @user_role_desc
-#		- @id_role_type
-#		- @user_pub_name
-#		- @product_id
-#		- @creator_bz_id
-#		- @mefe_invitation_id
-#		- @mefe_invitor_user_id
-#		- @is_occupant
-#		- @is_mefe_only_user
-#		- @role_user_more
-	CALL `update_assignee_if_dummy_user`;
-
 # Disable the BZ email notification engine
 # This procedure needs the following objects:
 #	- variables:
+#		- @is_mefe_only_user
 #		- @creator_bz_id
 #		- @bz_user_id
 	CALL `disable_bugmail`;
-
-# Make the invited user default CC for all cases in this unit if needed
-# This procedure needs the following objects:
-#	- variables:
-#		- @bz_user_id
-#		- @product_id
-#		- @component_id
-#		- @role_user_g_description
-	# Make sure the variable we need is correctly defined
-		SET @component_id = @component_id_this_role;
 	
-	# Run the procedure
-		CALL `user_in_default_cc_for_cases`;
+##############
+#
+#	WIP - We need to move this into conditional procedures
+#	These procedures will be called based on the value of the field `invitation_type` in the table `ut_invitation_api_data`
+#
+##############	
+		
+	# Replace the default user for this role if needed
+	# This procedure needs the following objects:
+	#	- variables:
+	#		- @is_current_assignee_this_role_a_dummy_user
+	#		- @component_id_this_role
+	#		- @bz_user_id
+	#		- @user_role_desc
+	#		- @id_role_type
+	#		- @user_pub_name
+	#		- @product_id
+	#		- @creator_bz_id
+	#		- @mefe_invitation_id
+	#		- @mefe_invitor_user_id
+	#		- @is_occupant
+	#		- @is_mefe_only_user
+	#		- @role_user_more
+		CALL `update_assignee_if_dummy_user`;
+
+	# Make the invited user default CC for all cases in this unit if needed
+	# This procedure needs the following objects:
+	#	- variables:
+	#		- @bz_user_id
+	#		- @product_id
+	#		- @component_id
+	#		- @role_user_g_description
+		# Make sure the variable we need is correctly defined
+			SET @component_id = @component_id_this_role;
+		
+		# Run the procedure
+			CALL `user_in_default_cc_for_cases`;
+
+##############
+#
+#	END WIP - We need to move this into conditional procedures
+#
+##############	
 
 # Update the table 'ut_invitation_api_data' so we record what we have done
 
