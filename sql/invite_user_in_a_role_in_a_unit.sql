@@ -43,7 +43,7 @@
 # This script will:
 #	- Create a temp table to store the permissions we are creating
 #	- Reset things for this user for this unit:
-#		- Remove all the permissions for this unit for this user.
+#		- Remove all the permissions for this user for this unit for ALL roles.
 #WIP 	- Remove this user from the list of user in default CC for a case for this role in this unit.
 #	- Get the information needed from the table `ut_invitation_api_data`
 #		- BZ Invitor id
@@ -56,30 +56,34 @@
 #				- IF the user is a MEFE user only 
 #				  Then disable the mail sending functionality from the BZFE.
 #		- The type of invitation for this user
-#WIP		- Remove and Replace: 
+#WIP (a procedure for that is missing)		- 'replace_default': Remove and Replace: 
+#				- Grant the permissions to the inviter user for this role for this unit
+#				and 
 #				- Remove the existing default user for this role
 #				and 
 #				- Replace the default user for this role 
-#WIP		- Keep existing and Add invited
-#				- Keep the existing default user as default
+#		- 'default_cc_all': Keep existing assignee, Add invited and make invited default CC
+#				- Grant the permissions to the invited user for this role for this unit
 #				and
-#				- Grant the permissions to the inviter user for this role for this unit
-#WIP		- Keep existing, Add invited and make invited default CC
 #				- Keep the existing default user as default
-#				and
-#				- Grant the permissions to the inviter user for this role for this unit
 #				and
 #				- Make the invited user an automatic CC to all the new cases for this role for this unit
-#WIP		- Other or no information about the type of invitation
+#		- 'keep_default' Keep existing and Add invited
+#				- Grant the permissions to the inviter user for this role for this unit
+#				and 
+#				- Keep the existing default user as default
+#		- Other or no information about the type of invitation
+#				- Grant the permissions to the inviter user for this role for this unit
+#				and
 #				- Check if this new user is the first in this role for this unit.
-#				- If it IS the first in this role for this unit.
-#			 	  Then Replace the Default 'dummy user' for this specific role with the BZ user in CC for this role for this unit.
-#				- If it is NOT the first in this role for this unit.
-#				  Do Nothing
+#					- If it IS the first in this role for this unit.
+#				 	  Then Replace the Default 'dummy user' for this specific role with the BZ user in CC for this role for this unit.
+#					- If it is NOT the first in this role for this unit.
+#					  Do Nothing
 #	- Process the invitation accordingly.
 #	- Delete an re-create all the entries for the table `user_groups`
 #	- Log the action of the scripts that are run
-#	- Update the invitation once the 
+#	- Update the invitation once everything has been done
 #	- Exit with either:
 #		- an error message (there was a problem somewhere)
 #		or 
@@ -116,9 +120,6 @@
 		SET @user_can_see_publicly_visible = 1;
 		SET @can_ask_to_approve_flags = 1;
 		SET @can_approve_all_flags = 1;
-	
-	# Do we need to make the invitee a default CC for all new cases for this role in this unit?
-		SET @user_in_default_cc_for_cases = 0;
 
 # Timestamp	
 	SET @timestamp = NOW();
@@ -270,20 +271,30 @@
 							WHERE `id` = @reference_for_update)
 							;
 
-# Do we need to change the case assignee?
-	SET @change_case_assignee = IF (@invitation_type = 'type_assigned'
-		, 1
-		, 0
-		)
-		;
+# Do we need to make the invitee a default CC for all new cases for this role in this unit?
+# This depends on the type of invitation that we are creating
+#	- 1 (YES) if the invitation type is ''
+#		- 'default_cc_all'
+#	- 0 (NO) if the invitation type is any other invitation type
+#
+		SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
+			, '1'
+			, '0'
+			)
+			;
 
-# Do we need to put the invitee in CC for this case?
-	SET @add_invitee_in_cc = IF (@invitation_type = 'type_cc'
-		, 1
-		, 0
-		)
-		;
-							
+# Do we need to replace the default assignee for this role in this unit?
+# This depends on the type of invitation that we are creating
+#	- 1 (YES) if the invitation type is
+#		- 'replace_default'
+#	- 0 (NO) if the invitation type is any other invitation type
+#
+		SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
+			, '1'
+			, '0'
+			)
+			;
+
 #################################################################
 #
 # All the variables have been set - we can call the procedures
@@ -443,6 +454,7 @@
 		#		- @id_role_type
 		#		- @bz_user_id
 		#		- @product_id
+		#		- @is_occupant
 			CALL `show_to_tenant`;
 			CALL `is_tenant`;
 			CALL `default_tenant_can_see_tenant`;
@@ -479,30 +491,31 @@
 #		- @bz_user_id
 	CALL `disable_bugmail`;
 	
+# Replace the default user for this role if needed
+# This procedure needs the following objects:
+#	- variables:
+#		- @is_current_assignee_this_role_a_dummy_user
+#		- @component_id_this_role
+#		- @bz_user_id
+#		- @user_role_desc
+#		- @id_role_type
+#		- @user_pub_name
+#		- @product_id
+#		- @creator_bz_id
+#		- @mefe_invitation_id
+#		- @mefe_invitor_user_id
+#		- @is_occupant
+#		- @is_mefe_only_user
+#		- @role_user_more
+	CALL `update_assignee_if_dummy_user`;
+	
 ##############
 #
 #	WIP - We need to move this into conditional procedures
 #	These procedures will be called based on the value of the field `invitation_type` in the table `ut_invitation_api_data`
 #
 ##############	
-		
-	# Replace the default user for this role if needed
-	# This procedure needs the following objects:
-	#	- variables:
-	#		- @is_current_assignee_this_role_a_dummy_user
-	#		- @component_id_this_role
-	#		- @bz_user_id
-	#		- @user_role_desc
-	#		- @id_role_type
-	#		- @user_pub_name
-	#		- @product_id
-	#		- @creator_bz_id
-	#		- @mefe_invitation_id
-	#		- @mefe_invitor_user_id
-	#		- @is_occupant
-	#		- @is_mefe_only_user
-	#		- @role_user_more
-		CALL `update_assignee_if_dummy_user`;
+
 
 	# Make the invited user default CC for all cases in this unit if needed
 	# This procedure needs the following objects:
