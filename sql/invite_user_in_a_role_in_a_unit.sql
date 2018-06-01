@@ -107,51 +107,6 @@
 #					
 #####################################################
 
-# User permissions:
-	# These will depend on :
-	#	- The invitation type
-	#	- The default values currently configured
-
-	# Things which depends on the invitation type:
-	
-		# Do we need to make the invitee a default CC for all new cases for this role in this unit?
-		# This depends on the type of invitation that we are creating
-		#	- 1 (YES) if the invitation type is
-		#		- 'default_cc_all'
-		#	- 0 (NO) if the invitation type is any other invitation type
-		#
-				SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
-					, '1'
-					, '0'
-					)
-					;
-
-		# Do we need to replace the default assignee for this role in this unit?
-		# This depends on the type of invitation that we are creating
-		#	- 1 (YES) if the invitation type is
-		#		- 'replace_default'
-		#	- 0 (NO) if the invitation type is any other invitation type
-		#
-				SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
-					, '1'
-					, '0'
-					)
-					;
-	# Default permissions:	
-		#User Permissions in the unit:
-			SET @can_see_time_tracking = 1;
-			SET @can_create_shared_queries = 0;
-			SET @can_tag_comment = 1;
-			SET @can_create_new_cases = 1;
-			SET @can_edit_a_case = 1;
-			SET @can_see_all_public_cases = 1;
-			SET @can_edit_all_field_in_a_case_regardless_of_role = 1;
-			SET @can_see_unit_in_search = 1;
-			SET @user_is_publicly_visible = 1;
-			SET @user_can_see_publicly_visible = 1;
-			SET @can_ask_to_approve_flags = 1;
-			SET @can_approve_all_flags = 1;
-
 # Timestamp	
 	SET @timestamp = NOW();
 	
@@ -286,7 +241,54 @@
 							FROM `ut_invitation_api_data` 
 							WHERE `id` = @reference_for_update)
 							;
+							
+# User permissions:
+	# These will depend on :
+	#	- The invitation type
+	#	- The default values currently configured
+	# We NEED to have defined the variable @invitation_type FIRST!
 
+	# Things which depends on the invitation type:
+	
+		# Do we need to make the invitee a default CC for all new cases for this role in this unit?
+		# This depends on the type of invitation that we are creating
+		#	- 1 (YES) if the invitation type is
+		#		- 'default_cc_all'
+		#	- 0 (NO) if the invitation type is any other invitation type
+		#
+				SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
+					, '1'
+					, '0'
+					)
+					;
+
+		# Do we need to replace the default assignee for this role in this unit?
+		# This depends on the type of invitation that we are creating
+		#	- 1 (YES) if the invitation type is
+		#		- 'replace_default'
+		#	- 0 (NO) if the invitation type is any other invitation type
+		#
+				SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
+					, '1'
+					, '0'
+					)
+					;
+	# Default permissions:	
+		#User Permissions in the unit:
+			SET @can_see_time_tracking = 1;
+			SET @can_create_shared_queries = 0;
+			SET @can_tag_comment = 1;
+			SET @can_create_new_cases = 1;
+			SET @can_edit_a_case = 1;
+			SET @can_see_all_public_cases = 1;
+			SET @can_edit_all_field_in_a_case_regardless_of_role = 1;
+			SET @can_see_unit_in_search = 1;
+			SET @user_is_publicly_visible = 1;
+			SET @user_can_see_publicly_visible = 1;
+			SET @can_ask_to_approve_flags = 1;
+			SET @can_approve_all_flags = 1;
+
+							
 #################################################################
 #
 # All the variables have been set - we can call the procedures
