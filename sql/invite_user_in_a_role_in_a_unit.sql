@@ -266,11 +266,14 @@
 											;
 
 # Answer to the question "Is the current default assignee for this role one of the dummy users?"
-	SET @is_current_assignee_this_role_a_dummy_user = IF (@current_default_assignee_this_role = @bz_user_id_dummy_user_this_role
-		, 1
-		, 0
+	SET @is_current_assignee_this_role_a_dummy_user = IF( @replace_default_assignee = '1'
+		, '0'
+		, IF(@current_default_assignee_this_role = @bz_user_id_dummy_user_this_role
+			, '1'
+			, '0'
+			)
 		)
-		;	
+		;		
 	
 # Is the invited user an occupant of the unit?
 	SET @is_occupant = (SELECT `is_occupant` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
