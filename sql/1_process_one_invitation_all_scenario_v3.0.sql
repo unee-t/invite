@@ -137,9 +137,6 @@
 	
 # We create a temporary table to record the ids of the dummy users in each environments:
 	CALL `table_to_list_dummy_user_by_environment`;	
-	
-# We create a temporary table to record the ids of the dummy users in each environments:
-	CALL `create_temp_table_to_update_permissions`;
 		
 # The reference of the record we want to update in the table ''
 	SET @reference_for_update = (SELECT `id` FROM `ut_invitation_api_data` WHERE `mefe_invitation_id` = @mefe_invitation_id);	
