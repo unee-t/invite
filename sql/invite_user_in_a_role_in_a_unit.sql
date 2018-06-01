@@ -107,6 +107,49 @@
 #					
 #####################################################
 
+# We make sure that all the variable we user are set to NULL first
+# This is to avoid issue of a variable 'silently' using a value from a previous run
+	SET @reference_for_update = NULL;
+	SET @mefe_invitor_user_id = NULL;
+	SET @product_id = NULL;
+	SET @creator_bz_id = NULL;
+	SET @creator_pub_name = NULL;
+	SET @id_role_type = NULL;
+	SET @bz_user_id = NULL;
+	SET @role_user_g_description = NULL;
+	SET @user_pub_name = NULL;
+	SET @role_user_pub_info = NULL;
+	SET @user_role_desc = NULL;
+	SET @role_user_more = NULL;
+	SET @user_role_type_description = NULL;
+	SET @user_role_type_name = NULL;
+	SET @component_id_this_role = NULL;
+	SET @current_default_assignee_this_role = NULL;
+	SET @bz_user_id_dummy_tenant = NULL;
+	SET @bz_user_id_dummy_landlord = NULL;
+	SET @bz_user_id_dummy_contractor = NULL;
+	SET @bz_user_id_dummy_mgt_cny = NULL;
+	SET @bz_user_id_dummy_agent = NULL;
+	SET @bz_user_id_dummy_user_this_role = NULL;
+	SET @is_occupant = NULL;
+	SET @invitation_type = NULL;
+	SET @is_mefe_only_user = NULL;
+	SET @user_in_default_cc_for_cases = NULL;
+	SET @replace_default_assignee = NULL;
+	SET @can_see_time_tracking = NULL;
+	SET @can_create_shared_queries = NULL;
+	SET @can_tag_comment = NULL;
+	SET @can_create_new_cases = NULL;
+	SET @can_edit_a_case = NULL;
+	SET @can_see_all_public_cases = NULL;
+	SET @can_edit_all_field_in_a_case_regardless_of_role = NULL;
+	SET @can_see_unit_in_search = NULL;
+	SET @user_is_publicly_visible = NULL;
+	SET @user_can_see_publicly_visible = NULL;
+	SET @can_ask_to_approve_flags = NULL;
+	SET @can_approve_all_flags = NULL;
+	SET @is_current_assignee_this_role_a_dummy_user = NULL;
+
 # Timestamp	
 	SET @timestamp = NOW();
 	
@@ -220,16 +263,6 @@
 											)
 											;
 
-# Answer to the question "Is the current default assignee for this role one of the dummy users?"
-	SET @is_current_assignee_this_role_a_dummy_user = IF( @replace_default_assignee = '1'
-		, '0'
-		, IF(@current_default_assignee_this_role = @bz_user_id_dummy_user_this_role
-			, '1'
-			, '0'
-			)
-		)
-		;		
-	
 # Is the invited user an occupant of the unit?
 	SET @is_occupant = (SELECT `is_occupant` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
 	
@@ -288,7 +321,16 @@
 			SET @can_ask_to_approve_flags = 1;
 			SET @can_approve_all_flags = 1;
 
-							
+# Answer to the question "Is the current default assignee for this role one of the dummy users?"
+	SET @is_current_assignee_this_role_a_dummy_user = IF( @replace_default_assignee = '1'
+		, '0'
+		, IF(@current_default_assignee_this_role = @bz_user_id_dummy_user_this_role
+			, '1'
+			, '0'
+			)
+		)
+		;		
+								
 #################################################################
 #
 # All the variables have been set - we can call the procedures
