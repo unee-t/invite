@@ -1,17 +1,17 @@
 # For any question about this script, ask Franck
 #
-# This script needs that:
+# This script needs the following pre-requisites:
 #	- The data for the invitation are created in the table `ut_invitation_api_data`
-#	- The schema of the BZ database is v3.7+
+#	- The schema of the BZ database is v3.8
 #
 #################################################################
-#																#
+#
 # UPDATE THE BELOW VARIABLES ACCORDING TO YOUR NEEDS			#
-#																#
+#
 #################################################################
 #
 # The MEFE invitation id that we want to process:
-	SET @mefe_invitation_to_role_id = 'The_id_of_this_invitation_in_the_MEFE';
+	SET @mefe_invitation_id = 'The_id_of_this_invitation_in_the_MEFE';
 #
 # Environment: Which environment are you creating the unit in?
 #	- 1 is for the DEV/Staging
@@ -29,9 +29,9 @@
 ########################################################################
 #
 #############################################
-#											#
+#
 # IMPORTANT INFORMATION ABOUT THIS SCRIPT	#
-#											#
+#
 #############################################
 #
 # Use this script only if the Unit EXIST in the BZFE 
@@ -108,61 +108,57 @@
 #####################################################
 
 # User permissions:
-# These will depend on the invitation type:
+	# These will depend on :
+	#	- The invitation type
+	#	- The default values currently configured
 
+	# Things which depends on the invitation type:
+	
+		# Do we need to make the invitee a default CC for all new cases for this role in this unit?
+		# This depends on the type of invitation that we are creating
+		#	- 1 (YES) if the invitation type is
+		#		- 'default_cc_all'
+		#	- 0 (NO) if the invitation type is any other invitation type
+		#
+				SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
+					, '1'
+					, '0'
+					)
+					;
 
-# Do we need to make the invitee a default CC for all new cases for this role in this unit?
-# This depends on the type of invitation that we are creating
-#	- 1 (YES) if the invitation type is
-#		- 'default_cc_all'
-#	- 0 (NO) if the invitation type is any other invitation type
-#
-		SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
-			, '1'
-			, '0'
-			)
-			;
-
-# Do we need to replace the default assignee for this role in this unit?
-# This depends on the type of invitation that we are creating
-#	- 1 (YES) if the invitation type is
-#		- 'replace_default'
-#	- 0 (NO) if the invitation type is any other invitation type
-#
-		SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
-			, '1'
-			, '0'
-			)
-			;
-# Default values:	
-	#User Permissions in the unit:
-		SET @can_see_time_tracking = 1;
-		SET @can_create_shared_queries = 0;
-		SET @can_tag_comment = 1;
-		SET @can_create_new_cases = 1;
-		SET @can_edit_a_case = 1;
-		SET @can_see_all_public_cases = 1;
-		SET @can_edit_all_field_in_a_case_regardless_of_role = 1;
-		SET @can_see_unit_in_search = 1;
-		SET @user_is_publicly_visible = 1;
-		SET @user_can_see_publicly_visible = 1;
-		SET @can_ask_to_approve_flags = 1;
-		SET @can_approve_all_flags = 1;
+		# Do we need to replace the default assignee for this role in this unit?
+		# This depends on the type of invitation that we are creating
+		#	- 1 (YES) if the invitation type is
+		#		- 'replace_default'
+		#	- 0 (NO) if the invitation type is any other invitation type
+		#
+				SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
+					, '1'
+					, '0'
+					)
+					;
+	# Default permissions:	
+		#User Permissions in the unit:
+			SET @can_see_time_tracking = 1;
+			SET @can_create_shared_queries = 0;
+			SET @can_tag_comment = 1;
+			SET @can_create_new_cases = 1;
+			SET @can_edit_a_case = 1;
+			SET @can_see_all_public_cases = 1;
+			SET @can_edit_all_field_in_a_case_regardless_of_role = 1;
+			SET @can_see_unit_in_search = 1;
+			SET @user_is_publicly_visible = 1;
+			SET @user_can_see_publicly_visible = 1;
+			SET @can_ask_to_approve_flags = 1;
+			SET @can_approve_all_flags = 1;
 
 # Timestamp	
 	SET @timestamp = NOW();
 	
-# RESET: We remove the user from the list of user in default CC for this role
-# This procedure needs the following objects:
-#	- variables:
-#		- @bz_user_id : the BZ user id of the user
-#		- @component_id_this_role: The id of the role in the bz table `components`
-	CALL `remove_user_from_default_cc`;
-	
 # We create a temporary table to record the ids of the dummy users in each environments:
 	CALL `table_to_list_dummy_user_by_environment`;
 	
-# The reference of the record we want to update in the table ''
+# The reference of the record we want to update in the table `ut_invitation_api_data`
 	SET @reference_for_update = (SELECT `id` FROM `ut_invitation_api_data` WHERE `mefe_invitation_id` = @mefe_invitation_id);	
 
 # The MEFE information:
@@ -294,6 +290,16 @@
 #
 #################################################################
 
+	
+# RESET: We remove the user from the list of user in default CC for this role
+# This procedure needs the following objects:
+#	- variables:
+#		- @bz_user_id : 
+#		  the BZ user id of the user
+#		- @component_id_this_role: 
+#		  The id of the role in the bz table `components`
+	CALL `remove_user_from_default_cc`;
+
 # We are recording this for KPI measurements
 #	- Number of user per role per unit.
 
@@ -347,7 +353,7 @@
 			, @user_is_publicly_visible
 			, @user_can_see_publicly_visible
 			# Permissions for cases for this unit.
-			, @add_invitee_in_cc
+			, @user_in_default_cc_for_cases
 			, @can_create_new_cases
 			, @can_edit_a_case
 			, @can_see_all_public_cases
@@ -503,17 +509,17 @@
 	CALL `update_assignee_if_dummy_user`;
 
 # Make the invited user default CC for all cases in this unit if needed
-# This procedure needs the following objects:
-#	- variables:
-#		- @bz_user_id
-#		- @product_id
-#		- @component_id
-#		- @role_user_g_description
-	# Make sure the variable we need is correctly defined
-		SET @component_id = @component_id_this_role;
-	
-	# Run the procedure
-		CALL `user_in_default_cc_for_cases`;	
+	# This procedure needs the following objects:
+	#	- variables:
+	#		- @bz_user_id
+	#		- @product_id
+	#		- @component_id
+	#		- @role_user_g_description
+		# Make sure the variable we need is correctly defined
+			SET @component_id = @component_id_this_role;
+		
+		# Run the procedure
+			CALL `user_in_default_cc_for_cases`;	
 
 # Make the invited user the new default assignee for all cases in this role in this unit if needed
 # This procedure needs the following objects:
@@ -527,6 +533,13 @@
 		SET @component_id = @component_id_this_role;
 	
 	# Run the procedure
+		# This procedure needs the following objects:
+		#	- variables:
+		#		- @replace_default_assignee
+		#		- @bz_user_id
+		#		- @product_id
+		#		- @component_id
+		#		- @role_user_g_description
 		CALL `user_is_default_assignee_for_cases`;
 
 # Update the table 'ut_invitation_api_data' so we record what we have done
