@@ -46,7 +46,7 @@
 #	- Create a temp table to store the permissions we are creating
 #	- Reset things for this user for this unit:
 #		- Remove all the permissions for this user for this unit for ALL roles.
-#WIP 	- Remove this user from the list of user in default CC for a case for this role in this unit.
+# 	- Remove this user from the list of user in default CC for a case for this role in this unit.
 #	- Get the information needed from the table `ut_invitation_api_data`
 #		- BZ Invitor id
 #		- BZ unit id
@@ -98,12 +98,6 @@
 #		- no error message (succcess)
 #
 #
-#
-#	- Add an existing BZ user as ASSIGNEE to an existing case which has already been created.
-#	- Add a comment in the table 'longdesc' to the case to explain that the invitation has been sent to the invited user
-#	- Record the change of assignee in the bug activity table so that we have history
-#	- Does NOT update the bug_user_last_visit table as the user had no action in there.
-#
 # Limits of this script:
 #	- Unit must have all roles created with Dummy user roles.
 #
@@ -113,8 +107,34 @@
 #					
 #####################################################
 
-# Default values:
-	
+# User permissions:
+# These will depend on the invitation type:
+
+
+# Do we need to make the invitee a default CC for all new cases for this role in this unit?
+# This depends on the type of invitation that we are creating
+#	- 1 (YES) if the invitation type is
+#		- 'default_cc_all'
+#	- 0 (NO) if the invitation type is any other invitation type
+#
+		SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
+			, '1'
+			, '0'
+			)
+			;
+
+# Do we need to replace the default assignee for this role in this unit?
+# This depends on the type of invitation that we are creating
+#	- 1 (YES) if the invitation type is
+#		- 'replace_default'
+#	- 0 (NO) if the invitation type is any other invitation type
+#
+		SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
+			, '1'
+			, '0'
+			)
+			;
+# Default values:	
 	#User Permissions in the unit:
 		SET @can_see_time_tracking = 1;
 		SET @can_create_shared_queries = 0;
@@ -132,26 +152,15 @@
 # Timestamp	
 	SET @timestamp = NOW();
 	
+# RESET: We remove the user from the list of user in default CC for this role
+# This procedure needs the following objects:
+#	- variables:
+#		- @bz_user_id : the BZ user id of the user
+#		- @component_id_this_role: The id of the role in the bz table `components`
+	CALL `remove_user_from_default_cc`;
+	
 # We create a temporary table to record the ids of the dummy users in each environments:
-	/*Table structure for table `ut_temp_dummy_users_for_roles` */
-		DROP TABLE IF EXISTS `ut_temp_dummy_users_for_roles`;
-
-		CREATE TABLE `ut_temp_dummy_users_for_roles` (
-		  `environment_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Id of the environment',
-		  `environment_name` varchar(256) COLLATE utf8_unicode_ci NOT NULL,
-		  `tenant_id` int(11) NOT NULL,
-		  `landlord_id` int(11) NOT NULL,
-		  `contractor_id` int(11) NOT NULL,
-		  `mgt_cny_id` int(11) NOT NULL,
-		  `agent_id` int(11) DEFAULT NULL,
-		  PRIMARY KEY (`environment_id`)
-		) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-	/*Data for the table `ut_temp_dummy_users_for_roles` */
-		INSERT INTO `ut_temp_dummy_users_for_roles`(`environment_id`,`environment_name`,`tenant_id`,`landlord_id`,`contractor_id`,`mgt_cny_id`,`agent_id`) values 
-			(1,'DEV/Staging',96,94,93,95,92),
-			(2,'Prod',93,91,90,92,89),
-			(3,'demo/dev',4,3,5,6,2);
+	CALL `table_to_list_dummy_user_by_environment`;
 	
 # The reference of the record we want to update in the table ''
 	SET @reference_for_update = (SELECT `id` FROM `ut_invitation_api_data` WHERE `mefe_invitation_id` = @mefe_invitation_id);	
@@ -278,30 +287,6 @@
 							FROM `ut_invitation_api_data` 
 							WHERE `id` = @reference_for_update)
 							;
-
-# Do we need to make the invitee a default CC for all new cases for this role in this unit?
-# This depends on the type of invitation that we are creating
-#	- 1 (YES) if the invitation type is ''
-#		- 'default_cc_all'
-#	- 0 (NO) if the invitation type is any other invitation type
-#
-		SET @user_in_default_cc_for_cases = IF (@invitation_type = 'default_cc_all'
-			, '1'
-			, '0'
-			)
-			;
-
-# Do we need to replace the default assignee for this role in this unit?
-# This depends on the type of invitation that we are creating
-#	- 1 (YES) if the invitation type is
-#		- 'replace_default'
-#	- 0 (NO) if the invitation type is any other invitation type
-#
-		SET @replace_default_assignee = IF (@invitation_type = 'replace_default'
-			, '1'
-			, '0'
-			)
-			;
 
 #################################################################
 #
