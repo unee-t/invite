@@ -185,6 +185,7 @@
 	# We populate the additional variables that we will need for this script to work:
 		SET @role_user_g_description = (SELECT `role_type` FROM `ut_role_types` WHERE `id_role_type`=@id_role_type);
 		SET @user_pub_name = (SELECT (LEFT(`login_name`,INSTR(`login_name`,"@")-1)) FROM `profiles` WHERE `userid` = @bz_user_id);
+		SET @role_user_more = (SELECT `user_more` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);		
 		SET @role_user_pub_info = CONCAT(@user_pub_name
 								, IF (@role_user_more = '', '', ' - ')
 								, IF (@role_user_more = '', '', @role_user_more)
@@ -192,8 +193,6 @@
 								;
 		SET @user_role_desc = (CONCAT(@role_user_g_description, ' - ',@role_user_pub_info));
 	
-
-	SET @role_user_more = (SELECT `user_more` FROM `ut_invitation_api_data` WHERE `id` = @reference_for_update);
 	SET @user_role_type_description = (SELECT `bz_description` FROM `ut_role_types` WHERE `id_role_type` = @id_role_type);
 	SET @user_role_type_name = (SELECT `role_type` FROM `ut_role_types` WHERE `id_role_type` = @id_role_type);
 	
@@ -329,7 +328,7 @@
 			, '0'
 			)
 		)
-		;		
+		;
 								
 #################################################################
 #
