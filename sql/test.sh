@@ -1,0 +1,1 @@
+mysql -h auroradb.dev.unee-t.com -P 3306 -u bugzilla --password=$(aws --profile uneet-dev ssm get-parameters --names MYSQL_PASSWORD --with-decryption --query Parameters[0].Value --output text) bugzilla < script.sql

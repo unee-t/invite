@@ -1,0 +1,16 @@
+build:
+    main: main.go
+    binary: apienroll
+    goos:
+        - windows
+        - darwin
+        - linux
+    goarch:
+        - amd64
+
+dockers:
+    - image: uneet/invite
+      tag_templates:
+          - '{{ .Tag }}'
+          - 'v{{ .Major }}.{{ .Minor }}'
+          - 'latest'
