@@ -105,6 +105,7 @@ func main() {
 	addr := ":" + os.Getenv("PORT")
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.Handle("/", http.HandlerFunc(h.handleInvite))
+	http.Handle("/role", http.HandlerFunc(h.handleinviteUsertoUnit))
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
@@ -160,6 +161,25 @@ func (h handler) runsql(sqlfile string, invite invite) (err error) {
 		log.WithError(err).Error("running sql failed")
 	}
 	return
+}
+
+func (h handler) inviteUsertoUnit(invites []invite) (result error) {
+	for _, invite := range invites {
+
+		ctx := log.WithFields(log.Fields{
+			"invite": invite,
+		})
+
+		err := h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
+
+		if err != nil {
+			ctx.WithError(err).Error("failed to run 1_process_one_invitation_all_scenario_v3.0.sql")
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+			continue
+		}
+
+	}
+	return result
 }
 
 func (h handler) processInvite(invites []invite) (result error) {
@@ -291,6 +311,31 @@ func (h handler) handleInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.OK(w, "Worked")
+
+}
+
+func (h handler) handleinviteUsertoUnit(w http.ResponseWriter, r *http.Request) {
+
+	decoder := json.NewDecoder(r.Body)
+	var invites []invite
+	err := decoder.Decode(&invites)
+
+	if err != nil {
+		log.WithError(err).Errorf("Input error")
+		response.BadRequest(w, "Invalid JSON")
+		return
+	}
+	defer r.Body.Close()
+
+	log.Infof("Input %+v", invites)
+
+	err = h.inviteUsertoUnit(invites)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response.OK(w, "inviteUsertoUnit")
 
 }
 
