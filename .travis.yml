@@ -1,15 +1,26 @@
 sudo: required
 language: go
+
 go:
 - tip
+
 before_install:
 - curl -sf https://up.apex.sh/install | sudo sh
 - sudo up upgrade
+
+services:
+    - docker
+
 install:
 - go get -t ./...
 - sudo apt-get install jq -y
+
+after_success:
+- test -n "$TRAVIS_TAG" && docker login -u=uneetci -p="$DOCKER_PASSWORD"
+
 script:
 - go test -v ./...
+
 deploy:
  # dev
  - provider: script
