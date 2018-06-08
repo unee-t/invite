@@ -75,11 +75,7 @@ func New() (h handler, err error) {
 		Code:           e.Code,
 	}
 
-	if h.Code == 0 {
-		err = fmt.Errorf("Error code is unknown/unset")
-		return
-	}
-
+	log.Infof("h.Code is %d", h.Code)
 	log.Infof("Frontend URL: %v", h.Domain)
 
 	h.db, err = sql.Open("mysql", h.DSN)
