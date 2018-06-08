@@ -104,8 +104,8 @@ func main() {
 
 	addr := ":" + os.Getenv("PORT")
 	http.HandleFunc("/favicon.ico", http.NotFound)
-	http.Handle("/", http.HandlerFunc(h.handleInvite))
-	http.Handle("/role", http.HandlerFunc(h.handleinviteUsertoUnit))
+	http.Handle("/role", env.Protect(http.HandlerFunc(h.handleinviteUsertoUnit), h.APIAccessToken))
+	http.Handle("/", env.Protect(http.HandlerFunc(h.handleInvite), h.APIAccessToken))
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
