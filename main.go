@@ -63,7 +63,7 @@ func New() (h handler, err error) {
 	cfg.Region = endpoints.ApSoutheast1RegionID
 	e, err := env.New(cfg)
 	if err != nil {
-		log.WithError(err).Fatal("error getting unee-t env")
+		log.WithError(err).Warn("error getting unee-t env")
 	}
 
 	h = handler{
