@@ -7,6 +7,13 @@ dockers:
       tag_templates:
           - '{{ .Tag }}'
           - 'latest'
+      extra_files:
+          - sql/1_process_one_invitation_all_scenario_v3.0.sql
+          - sql/2_add_invitation_sent_message_to_a_case_v3.0.sql
+          - sql/invite_user_in_a_role_in_a_unit.sql
 
 archive:
-    format: binary
+    files:
+      - sql/1_process_one_invitation_all_scenario_v3.0.sql
+      - sql/2_add_invitation_sent_message_to_a_case_v3.0.sql
+      - sql/invite_user_in_a_role_in_a_unit.sql
