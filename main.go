@@ -32,16 +32,16 @@ type handler struct {
 	Code           env.EnvCode
 }
 
-// {{DOMAIN}}/api/pending-invitations?accessToken={{API_ACCESS_TOKEN}}
+// loosely models ut_invitation_api_data. JSON binding come from MEFE API /api/pending-invitations
 type invite struct {
-	ID         string `json:"_id"`
+	ID         string `json:"_id"` // mefe_invitation_id (must be unique)
 	InvitedBy  int    `json:"invitedBy"`
 	Invitee    int    `json:"invitee"`
 	Role       string `json:"role"`
 	IsOccupant bool   `json:"isOccupant"`
 	CaseID     int    `json:"caseId"`
 	UnitID     int    `json:"unitId"`
-	Type       string `json:"type"`
+	Type       string `json:"type"` // invitation type
 }
 
 func init() {
@@ -100,8 +100,13 @@ func main() {
 
 	addr := ":" + os.Getenv("PORT")
 	http.HandleFunc("/favicon.ico", http.NotFound)
+
+	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
 	http.Handle("/role", env.Protect(http.HandlerFunc(h.handleinviteUsertoUnit), h.APIAccessToken))
+
+	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
 	http.Handle("/", env.Protect(http.HandlerFunc(h.handleInvite), h.APIAccessToken))
+
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
@@ -166,12 +171,20 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 			"invite": invite,
 		})
 
-		err := h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
+		// Insert into ut_invitation_api_data
+
+		err := h.step1Insert(invite)
+		if err != nil {
+			ctx.WithError(err).Error("failed to run step1Insert")
+			return err
+		}
+
+		// Run invite_user_in_a_role_in_a_unit.sql
+		err = h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
 
 		if err != nil {
-			ctx.WithError(err).Error("failed to run 1_process_one_invitation_all_scenario_v3.0.sql")
-			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			continue
+			ctx.WithError(err).Error("failed to run invite_user_in_a_role_in_a_unit.sql")
+			return err
 		}
 
 	}
@@ -324,6 +337,11 @@ func (h handler) handleinviteUsertoUnit(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 
 	log.Infof("Input %+v", invites)
+
+	if len(invites) < 1 {
+		response.BadRequest(w, "Empty payload")
+		return
+	}
 
 	err = h.inviteUsertoUnit(invites)
 	if err != nil {

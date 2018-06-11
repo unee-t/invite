@@ -1,1 +1,4 @@
-mysql -h auroradb.dev.unee-t.com -P 3306 -u bugzilla --password=$(aws --profile uneet-dev ssm get-parameters --names MYSQL_PASSWORD --with-decryption --query Parameters[0].Value --output text) bugzilla < script.sql
+curl -i -X POST \
+	-H "Content-Type: application/json" --data @invites.json \
+	-H "Authorization: Bearer $(aws --profile uneet-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" \
+	http://localhost:3000/role
