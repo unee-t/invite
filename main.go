@@ -320,7 +320,7 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.OK(w, "Pulled %d", len(invites))
+	response.OK(w, fmt.Sprintf("Pulled %d", len(invites)))
 
 }
 
@@ -350,7 +350,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.OK(w, "Pushed %d", len(invites))
+	response.OK(w, fmt.Sprintf("Pushed %d", len(invites)))
 
 }
 
