@@ -12,6 +12,7 @@ import (
 	jsonhandler "github.com/apex/log/handlers/json"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/gorilla/pat"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
 	"github.com/unee-t/env"
@@ -99,15 +100,15 @@ func main() {
 	defer h.db.Close()
 
 	addr := ":" + os.Getenv("PORT")
-	http.HandleFunc("/favicon.ico", http.NotFound)
+	app := pat.New()
 
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
-	http.Handle("/role", env.Protect(http.HandlerFunc(h.handleinviteUsertoUnit), h.APIAccessToken))
+	app.Post("/", h.handlePush)
 
 	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
-	http.Handle("/", env.Protect(http.HandlerFunc(h.handleInvite), h.APIAccessToken))
+	app.Get("/", h.handlePull)
 
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	if err := http.ListenAndServe(addr, env.Protect(app, h.APIAccessToken)); err != nil {
 		log.WithError(err).Fatal("error listening")
 	}
 
@@ -301,7 +302,7 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 
 }
 
-func (h handler) handleInvite(w http.ResponseWriter, r *http.Request) {
+func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Robots-Tag", "none") // We don't want Google to index us
 
@@ -319,11 +320,11 @@ func (h handler) handleInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.OK(w, "Worked")
+	response.OK(w, "Pulled %d", len(invites))
 
 }
 
-func (h handler) handleinviteUsertoUnit(w http.ResponseWriter, r *http.Request) {
+func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	var invites []invite
@@ -349,7 +350,7 @@ func (h handler) handleinviteUsertoUnit(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response.OK(w, "inviteUsertoUnit")
+	response.OK(w, "Pushed %d", len(invites))
 
 }
 
