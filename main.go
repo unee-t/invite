@@ -67,11 +67,32 @@ func New() (h handler, err error) {
 		log.WithError(err).Warn("error getting unee-t env")
 	}
 
+	// Check for MYSQL_HOST override
+	var mysqlhost string
+	val, ok := os.LookupEnv("MYSQL_HOST")
+	if ok {
+		log.Infof("MYSQL_HOST overridden by local env: %s", val)
+		mysqlhost = val
+	} else {
+		mysqlhost = e.Udomain("auroradb")
+	}
+
+	// Check for CASE_HOST override
+	var casehost string
+	val, ok = os.LookupEnv("CASE_HOST")
+	if ok {
+		log.Infof("CASE_HOST overridden by local env: %s", val)
+		casehost = val
+	} else {
+		casehost = fmt.Sprintf("https://%s", e.Udomain("case"))
+	}
+
 	h = handler{
-		DSN: fmt.Sprintf("bugzilla:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
+		DSN: fmt.Sprintf("%s:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
+			e.GetSecret("MYSQL_USER"),
 			e.GetSecret("MYSQL_PASSWORD"),
-			e.Udomain("auroradb")),
-		Domain:         fmt.Sprintf("https://%s", e.Udomain("case")),
+			mysqlhost),
+		Domain:         casehost,
 		APIAccessToken: e.GetSecret("API_ACCESS_TOKEN"),
 		Code:           e.Code,
 	}
