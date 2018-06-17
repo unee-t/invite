@@ -248,12 +248,14 @@ func (h handler) processInvite(invites []invite) (result error) {
 			continue
 		}
 
-		// Step 4
-		err = h.runsql("2_add_invitation_sent_message_to_a_case_v3.0.sql", invite)
-		if err != nil {
-			ctx.WithError(err).Error("failed to run 2_add_invitation_sent_message_to_a_case_v3.0.sql")
-			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			continue
+		if invite.CaseID != 0 {
+			// Step 4
+			err = h.runsql("2_add_invitation_sent_message_to_a_case_v3.0.sql", invite)
+			if err != nil {
+				ctx.WithError(err).Error("failed to run 2_add_invitation_sent_message_to_a_case_v3.0.sql")
+				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+				continue
+			}
 		}
 	}
 
