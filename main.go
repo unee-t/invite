@@ -256,11 +256,11 @@ func (h handler) processInvite(invites []invite) (result error) {
 				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 				continue
 			}
+		} else {
+			ctx.Warn("Skipping (Step 4) 2_add_invitation_sent_message_to_a_case_v3.0.sql since CaseID is empty")
 		}
 	}
-
 	return result
-
 }
 
 func (h handler) getInvites() (lr []invite, err error) {
