@@ -25,6 +25,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// These get autofilled by goreleaser
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 type handler struct {
 	DSN            string // e.g. "bugzilla:secret@tcp(auroradb.dev.unee-t.com:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL"
 	Domain         string // e.g. https://dev.case.unee-t.com
@@ -122,6 +129,9 @@ func main() {
 
 	addr := ":" + os.Getenv("PORT")
 	app := pat.New()
+
+	// Show version
+	app.Get("/version", showversion)
 
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
 	app.Post("/", h.handlePush)
@@ -329,6 +339,8 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 
 func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
+	log.Info("handlePull")
+
 	w.Header().Set("X-Robots-Tag", "none") // We don't want Google to index us
 
 	invites, err := h.getInvites()
@@ -391,4 +403,8 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 	response.OK(w, outArg)
 
+}
+
+func showversion(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "%v, commit %v, built at %v", version, commit, date)
 }
