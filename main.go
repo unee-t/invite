@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	jsonhandler "github.com/apex/log/handlers/json"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
@@ -22,6 +23,7 @@ import (
 
 	"database/sql"
 
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -132,6 +134,8 @@ func main() {
 	app.HandleFunc("/version", showversion).Methods("GET")
 	app.HandleFunc("/fail", fail).Methods("GET")
 
+	app.HandleFunc("/check", h.processedAlready).Methods("GET")
+
 	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
 	app.HandleFunc("/", h.handlePush).Methods("GET")
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
@@ -231,9 +235,14 @@ func (h handler) processInvite(invites []invite) (result error) {
 
 		// Processing invite one by one. If it fails, we move onto next one.
 
+		dt, err := h.checkProcessedDatetime(invite.ID)
+		if err == nil {
+			ctx.Warnf("already processed %s", time.Since(dt.Time))
+		}
+
 		ctx.Info("Step 1, inserting")
 
-		err := h.step1Insert(invite)
+		err = h.step1Insert(invite)
 		if err != nil {
 			ctx.WithError(err).Error("failed to run step1Insert")
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
@@ -401,6 +410,36 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 	response.OK(w, outArg)
 
+}
+
+func (h handler) processedAlready(w http.ResponseWriter, r *http.Request) {
+	MefeInvitationID := r.URL.Query().Get("id")
+	if MefeInvitationID == "" {
+		response.BadRequest(w, "Missing id")
+		return
+	}
+
+	ctx := log.WithFields(log.Fields{
+		"mefe_invitation_id": MefeInvitationID,
+	})
+
+	dt, err := h.checkProcessedDatetime(MefeInvitationID)
+	if err != nil {
+		ctx.WithError(err).Error("checking if processed")
+		response.BadRequest(w, "Not processed")
+		return
+	}
+
+	if dt.Valid {
+		response.OK(w, "Got a date")
+	} else {
+		response.BadRequest(w, "Bad date")
+	}
+}
+
+func (h handler) checkProcessedDatetime(MefeInvitationID string) (ProcessedDatetime mysql.NullTime, err error) {
+	err = h.db.QueryRow("SELECT processed_datetime FROM ut_invitation_api_data WHERE mefe_invitation_id=?", MefeInvitationID).Scan(&ProcessedDatetime)
+	return ProcessedDatetime, err
 }
 
 func showversion(w http.ResponseWriter, r *http.Request) {
