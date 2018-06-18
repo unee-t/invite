@@ -132,6 +132,7 @@ func main() {
 
 	// Show version
 	app.Get("/version", showversion)
+	app.Get("/fail", fail)
 
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
 	app.Post("/", h.handlePush)
@@ -407,4 +408,9 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 func showversion(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%v, commit %v, built at %v", version, commit, date)
+}
+
+func fail(w http.ResponseWriter, r *http.Request) {
+	log.Warn("5xx")
+	http.Error(w, "5xx", http.StatusInternalServerError)
 }
