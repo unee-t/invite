@@ -222,9 +222,9 @@ func (h handler) processInvite(invites []invite) (result error) {
 		})
 
 		// Processing invite one by one. If it fails, we move onto next one.
-		ctx.Info("Processing invite")
 
-		// Step 1
+		ctx.Info("Step 1, inserting")
+
 		err := h.step1Insert(invite)
 		if err != nil {
 			ctx.WithError(err).Error("failed to run step1Insert")
@@ -232,7 +232,8 @@ func (h handler) processInvite(invites []invite) (result error) {
 			continue
 		}
 
-		// Step 2
+		ctx.Info("Step 2, running SQL")
+
 		err = h.runsql("1_process_one_invitation_all_scenario_v3.0.sql", invite)
 		if err != nil {
 			ctx.WithError(err).Error("failed to run 1_process_one_invitation_all_scenario_v3.0.sql")
@@ -240,7 +241,8 @@ func (h handler) processInvite(invites []invite) (result error) {
 			continue
 		}
 
-		// Step 3
+		ctx.Info("Step 3, telling frontend we are done")
+
 		err = h.markInvitesProcessed([]string{invite.ID})
 		if err != nil {
 			ctx.WithError(err).Error("failed to run mark invite as processed")
@@ -249,7 +251,7 @@ func (h handler) processInvite(invites []invite) (result error) {
 		}
 
 		if invite.CaseID != 0 {
-			// Step 4
+			ctx.Infof("Step 4, with case id %d, send a message", invite.CaseID)
 			err = h.runsql("2_add_invitation_sent_message_to_a_case_v3.0.sql", invite)
 			if err != nil {
 				ctx.WithError(err).Error("failed to run 2_add_invitation_sent_message_to_a_case_v3.0.sql")
