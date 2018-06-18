@@ -12,7 +12,7 @@ import (
 	jsonhandler "github.com/apex/log/handlers/json"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/gorilla/pat"
+	"github.com/gorilla/mux"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
 	"github.com/unee-t/env"
@@ -128,17 +128,14 @@ func main() {
 	defer h.db.Close()
 
 	addr := ":" + os.Getenv("PORT")
-	app := pat.New()
-
-	// Show version
-	app.Get("/version", showversion)
-	app.Get("/fail", fail)
-
-	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
-	app.Post("/", h.handlePush)
+	app := mux.NewRouter()
+	app.HandleFunc("/version", showversion).Methods("GET")
+	app.HandleFunc("/fail", fail).Methods("GET")
 
 	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
-	app.Get("/", h.handlePull)
+	app.HandleFunc("/", h.handlePush).Methods("GET")
+	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
+	app.HandleFunc("/", h.handlePull).Methods("POST")
 
 	if err := http.ListenAndServe(addr, env.Protect(app, h.APIAccessToken)); err != nil {
 		log.WithError(err).Fatal("error listening")
