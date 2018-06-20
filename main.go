@@ -137,9 +137,10 @@ func main() {
 	app.HandleFunc("/check", h.processedAlready).Methods("GET")
 
 	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
-	app.HandleFunc("/", h.handlePush).Methods("GET")
+	app.HandleFunc("/", h.handlePull).Methods("GET")
+
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
-	app.HandleFunc("/", h.handlePull).Methods("POST")
+	app.HandleFunc("/", h.handlePush).Methods("POST")
 
 	if err := http.ListenAndServe(addr, env.Protect(app, h.APIAccessToken)); err != nil {
 		log.WithError(err).Fatal("error listening")
