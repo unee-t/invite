@@ -1,10 +1,13 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"testing"
 
+	"github.com/appleboy/gofight"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/assert"
 )
 
 var h handler
@@ -43,4 +46,18 @@ func Test_handler_lookupRoleID(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test route for the sake of https://github.com/unee-t/frontend/issues/297#issuecomment-398604129
+func TestPushRoute(t *testing.T) {
+	r := gofight.New()
+	r.POST("/").
+		SetJSON(gofight.D{
+			"foo": "bar",
+		}).
+		// turn on the debug mode.
+		SetDebug(true).
+		Run(h.BasicEngine(), func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
+			assert.Equal(t, http.StatusBadRequest, r.Code)
+		})
 }

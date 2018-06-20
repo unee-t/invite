@@ -119,17 +119,8 @@ func New() (h handler, err error) {
 
 }
 
-func main() {
+func (h handler) BasicEngine() http.Handler {
 
-	h, err := New()
-	if err != nil {
-		log.WithError(err).Fatal("error setting configuration")
-		return
-	}
-
-	defer h.db.Close()
-
-	addr := ":" + os.Getenv("PORT")
 	app := mux.NewRouter()
 	app.HandleFunc("/version", showversion).Methods("GET")
 	app.HandleFunc("/fail", fail).Methods("GET")
@@ -141,6 +132,22 @@ func main() {
 
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
 	app.HandleFunc("/", h.handlePush).Methods("POST")
+
+	return app
+}
+
+func main() {
+
+	h, err := New()
+	if err != nil {
+		log.WithError(err).Fatal("error setting configuration")
+		return
+	}
+
+	defer h.db.Close()
+
+	addr := ":" + os.Getenv("PORT")
+	app := h.BasicEngine()
 
 	if err := http.ListenAndServe(addr, env.Protect(app, h.APIAccessToken)); err != nil {
 		log.WithError(err).Fatal("error listening")
@@ -376,7 +383,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&invites)
 
 	if err != nil {
-		log.WithError(err).Errorf("Input error")
+		log.WithError(err).Errorf("Input error: %s", r.Body)
 		response.BadRequest(w, "Invalid JSON")
 		return
 	}
