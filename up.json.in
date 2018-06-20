@@ -55,13 +55,6 @@
             "action": "email.backend"
         },
         {
-            "metric": "http.latency",
-            "statistic": "avg",
-            "threshold": 1000,
-            "period": "5m",
-            "action": "email.backend"
-        },
-        {
             "namespace": "AWS/ApiGateway",
             "metric": "Count",
             "statistic": "sum",
