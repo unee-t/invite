@@ -391,6 +391,8 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("Input %+v", invites)
 
+	log.Infof("Length %d", len(invites))
+
 	if len(invites) < 1 {
 		response.BadRequest(w, "Empty payload")
 		return

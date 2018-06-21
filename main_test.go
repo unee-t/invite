@@ -61,3 +61,15 @@ func TestPushRoute(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, r.Code)
 		})
 }
+
+func TestEmptyPayloadPushRoute(t *testing.T) {
+	r := gofight.New()
+	r.POST("/").
+		SetBody("[]").
+		// turn on the debug mode.
+		SetDebug(true).
+		Run(h.BasicEngine(), func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
+			assert.Equal(t, "Empty payload\n", r.Body.String())
+			assert.Equal(t, http.StatusBadRequest, r.Code)
+		})
+}
