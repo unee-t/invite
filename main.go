@@ -246,6 +246,12 @@ func (h handler) processInvite(invites []invite) (result error) {
 		dt, err := h.checkProcessedDatetime(invite.ID)
 		if err == nil {
 			ctx.Warnf("already processed %s", time.Since(dt.Time))
+			err = h.markInvitesProcessed([]string{invite.ID})
+			if err != nil {
+				ctx.WithError(err).Error("failed to run mark invite as processed")
+				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+			}
+			continue
 		}
 
 		ctx.Info("Step 1, inserting")
