@@ -123,6 +123,7 @@ func (h handler) BasicEngine() http.Handler {
 
 	app := mux.NewRouter()
 	app.HandleFunc("/version", showversion).Methods("GET")
+	app.HandleFunc("/health_check", h.ping).Methods("GET")
 	app.HandleFunc("/fail", fail).Methods("GET")
 
 	app.HandleFunc("/check", h.processedAlready).Methods("GET")
@@ -465,4 +466,13 @@ func showversion(w http.ResponseWriter, r *http.Request) {
 func fail(w http.ResponseWriter, r *http.Request) {
 	log.Warn("5xx")
 	http.Error(w, "5xx", http.StatusInternalServerError)
+}
+
+func (h handler) ping(w http.ResponseWriter, r *http.Request) {
+	err := h.db.Ping()
+	if err != nil {
+		log.WithError(err).Error("failed to ping database")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	fmt.Fprintf(w, "OK")
 }

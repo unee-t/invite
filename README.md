@@ -23,3 +23,7 @@ This is codified over at: https://github.com/unee-t/env
 * AWS account id: 192458993663
 * profile: uneet-prod
 * https://invite.unee-t.com
+
+# Test plan
+
+`/health_check` for a sanity check with the database connection
