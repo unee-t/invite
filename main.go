@@ -366,7 +366,7 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 
 func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
-	log.Info("handlePull")
+	log.Infof("handlePull: %s", r.Header.Get("User-Agent"))
 
 	w.Header().Set("X-Robots-Tag", "none") // We don't want Google to index us
 
@@ -389,6 +389,8 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
+
+	log.Infof("handlePush: %s", r.Header.Get("User-Agent"))
 
 	buf := &bytes.Buffer{}
 	tee := io.TeeReader(r.Body, buf)
