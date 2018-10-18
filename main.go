@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"strconv"
 	"strings"
@@ -335,17 +338,19 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 		return err
 	}
 
+	if res.StatusCode != 200 {
+		log.Warnf("StatusCode is: %d", res.StatusCode)
+	}
+
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.WithError(err).Error("reading body")
-		return err
 	}
 
 	i, err := strconv.Atoi(string(body))
 	if err != nil {
-		log.WithError(err).Error("reading body")
-		return err
+		log.WithError(err).Error("cannot convert into integer")
 	}
 
 	//log.Infof("Response: %v", res)
@@ -385,19 +390,22 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
 func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 
-	decoder := json.NewDecoder(r.Body)
+	buf := &bytes.Buffer{}
+	tee := io.TeeReader(r.Body, buf)
+	defer r.Body.Close()
+	dec := json.NewDecoder(tee)
+
 	var invites []invite
-	err := decoder.Decode(&invites)
+	err := dec.Decode(&invites)
 
 	if err != nil {
-		log.WithError(err).Errorf("Input error: %s", r.Body)
-		response.BadRequest(w, "Invalid JSON")
+		dump, _ := httputil.DumpRequest(r, false)
+		log.WithError(err).Errorf("%s\n%v", dump, buf)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
 	log.Infof("Input %+v", invites)
-
 	log.Infof("Length %d", len(invites))
 
 	if len(invites) < 1 {
