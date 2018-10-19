@@ -1,6 +1,6 @@
 [Process Invitations in the BZ database](https://github.com/unee-t/bugzilla-customisation/wiki/Process-Invitations-in-the-BZ-database)
 
-[![Build Status](https://travis-ci.org/unee-t/processInvitations.svg?branch=master)](https://travis-ci.org/unee-t/processInvitations)
+[![Build Status](https://travis-ci.org/unee-t/invite.svg?branch=master)](https://travis-ci.org/unee-t/invite)
 
 # Different environments
 
