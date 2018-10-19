@@ -269,14 +269,14 @@ func (h handler) processInvite(invites []invite) (result error) {
 		if invite.CaseID == 0 { // if there is no CaseID, invite user to a role in the unit
 			err = h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
 			if err != nil {
-				ctx.WithError(err).Error("failed to run 1_invite_user_to_a_case.sql")
+				ctx.WithError(err).Error("failed to invite user to a role in the unit")
 				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 				continue
 			}
 		} else { // if there is a CaseID then invite to a case
 			err = h.runsql("1_invite_user_to_a_case.sql", invite)
 			if err != nil {
-				ctx.WithError(err).Error("failed to run 1_invite_user_to_a_case.sql")
+				ctx.WithError(err).Error("failed to invite user to a case")
 				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 				continue
 			}
