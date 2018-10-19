@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,21 +14,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	jsonhandler "github.com/apex/log/handlers/json"
+	"github.com/apex/log/handlers/text"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
 	"github.com/unee-t/env"
-
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/text"
-
-	"database/sql"
-
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // These get autofilled by goreleaser
@@ -269,11 +266,20 @@ func (h handler) processInvite(invites []invite) (result error) {
 
 		ctx.Info("Step 2, running SQL")
 
-		err = h.runsql("1_process_one_invitation_all_scenario_v3.0.sql", invite)
-		if err != nil {
-			ctx.WithError(err).Error("failed to run 1_process_one_invitation_all_scenario_v3.0.sql")
-			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			continue
+		if invite.CaseID == 0 { // if there is no CaseID, invite user to a role in the unit
+			err = h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
+			if err != nil {
+				ctx.WithError(err).Error("failed to run 1_invite_user_to_a_case.sql")
+				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+				continue
+			}
+		} else { // if there is a CaseID then invite to a case
+			err = h.runsql("1_invite_user_to_a_case.sql", invite)
+			if err != nil {
+				ctx.WithError(err).Error("failed to run 1_invite_user_to_a_case.sql")
+				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+				continue
+			}
 		}
 
 		ctx.Info("Step 3, telling frontend we are done")
