@@ -130,7 +130,7 @@
 		SET @user_in_default_cc_for_cases = 0;
 
 # Info about this script
-	SET @this_script = 'process_one_invitation_all_scenario_v3.0.sql';
+	SET @this_script = '1_invite_user_to_a_case.sql';
 
 # Timestamp	
 	SET @timestamp = NOW();
