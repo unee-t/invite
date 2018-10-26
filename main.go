@@ -55,11 +55,17 @@ type invite struct {
 }
 
 func init() {
-	if os.Getenv("UP_STAGE") == "" {
-		log.SetHandler(text.Default)
-	} else {
+	log.SetHandler(text.Default)
+
+	if s := os.Getenv("UP_STAGE"); s != "" {
 		log.SetHandler(jsonhandler.Default)
+		version = s
 	}
+
+	if v := os.Getenv("UP_COMMIT"); v != "" {
+		commit = v
+	}
+
 }
 
 // New setups the configuration assuming various parameters have been setup in the AWS account
