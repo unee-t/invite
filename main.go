@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -71,7 +70,7 @@ func init() {
 // New setups the configuration assuming various parameters have been setup in the AWS account
 func New() (h handler, err error) {
 
-	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-demo"))
 	if err != nil {
 		log.WithError(err).Fatal("setting up credentials")
 		return
@@ -242,16 +241,19 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 
 func (h handler) processInvite(invites []invite) (result error) {
 
-	for _, invite := range invites {
+	// Process only 5 at a time
+	// for num, invite := range invites[:5] {
+	for num, invite := range invites {
 
 		ctx := log.WithFields(log.Fields{
+			"num":    num,
 			"invite": invite,
 		})
 
 		// Processing invite one by one. If it fails, we move onto next one.
 
 		dt, err := h.checkProcessedDatetime(invite.ID)
-		if err == nil {
+		if err == nil && dt.Valid {
 			ctx.Warnf("already processed %s", time.Since(dt.Time))
 			err = h.markInvitesProcessed([]string{invite.ID})
 			if err != nil {
@@ -261,13 +263,19 @@ func (h handler) processInvite(invites []invite) (result error) {
 			continue
 		}
 
-		ctx.Info("Step 1, inserting")
-
-		err = h.step1Insert(invite)
+		_, err = h.checkIfInvitationExistsAlready(invite.ID)
+		// If there is an error, we know that invite ID does not exist in the ut_invitation_api_data table already
 		if err != nil {
-			ctx.WithError(err).Error("failed to run step1Insert")
-			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			continue
+			ctx.Info("Step 1, inserting")
+			err = h.step1Insert(invite)
+			if err != nil {
+				ctx.WithError(err).Error("failed to run step1Insert")
+				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+				continue
+			}
+		} else {
+			// Have not seen this message yet
+			ctx.Info("Skipping Step 1, as it appears to be inserted already")
 		}
 
 		ctx.Info("Step 2, running SQL")
@@ -288,7 +296,17 @@ func (h handler) processInvite(invites []invite) (result error) {
 			}
 		}
 
-		ctx.Info("Step 3, telling frontend we are done")
+		dtProcessCheck, err := h.checkProcessedDatetime(invite.ID)
+		// There is an error, there is no record
+		if err != nil {
+			ctx.WithError(err).Errorf("no process datetime: %s", invite.ID)
+			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
+			// Continue processing and not mark done
+			continue
+		}
+
+		ctx.Infof("Step 3, telling frontend we are done, since it was processed %s ago",
+			time.Since(dtProcessCheck.Time))
 
 		err = h.markInvitesProcessed([]string{invite.ID})
 		if err != nil {
@@ -354,23 +372,26 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 		log.Warnf("StatusCode is: %d", res.StatusCode)
 	}
 
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.WithError(err).Error("reading body")
-	}
+	// If run in parallel, it is concievable that an input is processed before it can be marked as done
+	// hence the "Acted on invitations" can be different from the "Input invitations"
 
-	i, err := strconv.Atoi(string(body))
-	if err != nil {
-		log.WithError(err).Error("cannot convert into integer")
-	}
+	// defer res.Body.Close()
+	// body, err := ioutil.ReadAll(res.Body)
+	// if err != nil {
+	// 	log.WithError(err).Error("reading body")
+	// }
+
+	// i, err := strconv.Atoi(string(body))
+	// if err != nil {
+	// 	log.WithError(err).Error("cannot convert into integer")
+	// }
 
 	//log.Infof("Response: %v", res)
 	//log.Infof("Num: %d", i)
 	//log.Infof("Body: %s", string(body))
-	if i != len(ids) {
-		return fmt.Errorf("Acted on %d invitations, but %d were submitted", i, len(ids))
-	}
+	// if i != len(ids) {
+	// 	return fmt.Errorf("Acted on %d invitations, but %d were submitted", i, len(ids))
+	// }
 
 	return
 
@@ -470,15 +491,22 @@ func (h handler) processedAlready(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if dt.Valid {
-		response.OK(w, "Got a date")
+		response.OK(w, fmt.Sprintf("Got a date: %s", dt.Time))
 	} else {
-		response.BadRequest(w, "Bad date")
+		response.BadRequest(w, "there is no processed_datetime")
 	}
 }
 
 func (h handler) checkProcessedDatetime(MefeInvitationID string) (ProcessedDatetime mysql.NullTime, err error) {
 	err = h.db.QueryRow("SELECT processed_datetime FROM ut_invitation_api_data WHERE mefe_invitation_id=?", MefeInvitationID).Scan(&ProcessedDatetime)
+	// log.Infof("Valid date time ? %v", ProcessedDatetime.Valid)
 	return ProcessedDatetime, err
+}
+
+func (h handler) checkIfInvitationExistsAlready(MefeInvitationID string) (inviteID string, err error) {
+	err = h.db.QueryRow("SELECT mefe_invitation_id FROM ut_invitation_api_data WHERE mefe_invitation_id=?",
+		MefeInvitationID).Scan(&inviteID)
+	return inviteID, err
 }
 
 func showversion(w http.ResponseWriter, r *http.Request) {

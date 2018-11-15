@@ -73,3 +73,31 @@ func TestEmptyPayloadPushRoute(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, r.Code)
 		})
 }
+
+func Test_handler_processInvite(t *testing.T) {
+	type args struct {
+		invites []invite
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "5bed2527dac533d8a79a1e0d",
+			args: args{
+				invites: []invite{{
+					ID: "5bed2527dac533d8a79a1e0d",
+				}},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := h.processInvite(tt.args.invites); (err != nil) != tt.wantErr {
+				t.Errorf("handler.processInvite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
