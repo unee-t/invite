@@ -70,7 +70,7 @@ func init() {
 // New setups the configuration assuming various parameters have been setup in the AWS account
 func New() (h handler, err error) {
 
-	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-demo"))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
 	if err != nil {
 		log.WithError(err).Fatal("setting up credentials")
 		return
@@ -241,8 +241,8 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 
 func (h handler) processInvite(invites []invite) (result error) {
 
-	// Process only 5 at a time
-	// for num, invite := range invites[:5] {
+	log.Infof("Number of invites to process: %d", len(invites))
+
 	for num, invite := range invites {
 
 		ctx := log.WithFields(log.Fields{
