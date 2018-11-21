@@ -46,8 +46,8 @@ type handler struct {
 	Env            env.Env
 }
 
-// loosely models ut_invitation_api_data. JSON binding come from MEFE API /api/pending-invitations
-type invite struct {
+// Invite loosely models ut_invitation_api_data. JSON binding come from MEFE API /api/pending-invitations
+type Invite struct {
 	ID         string `json:"_id"` // mefe_invitation_id (must be unique)
 	InvitedBy  int    `json:"invitedBy"`
 	Invitee    int    `json:"invitee"`
@@ -152,7 +152,7 @@ func (h handler) lookupRoleID(roleName string) (IDRoleType int, err error) {
 	return IDRoleType, err
 }
 
-func (h handler) step1Insert(invite invite) (err error) {
+func (h handler) step1Insert(invite Invite) (err error) {
 	roleID, err := h.lookupRoleID(invite.Role)
 	if err != nil {
 		return
@@ -189,7 +189,7 @@ func esql(a asset) asset {
 	return a
 }
 
-func (h handler) runsql(sqlfile asset, invite invite) (err error) {
+func (h handler) runsql(sqlfile asset, invite Invite) (err error) {
 	log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Env.Code)
 	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, h.Env.Code))
 	if err != nil {
@@ -198,7 +198,7 @@ func (h handler) runsql(sqlfile asset, invite invite) (err error) {
 	return
 }
 
-func (h handler) inviteUsertoUnit(invites []invite) (result error) {
+func (h handler) inviteUsertoUnit(invites []Invite) (result error) {
 	for _, invite := range invites {
 
 		ctx := log.WithFields(log.Fields{
@@ -224,7 +224,7 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 	}
 	return result
 }
-func (h handler) queue(invites []invite) error {
+func (h handler) queue(invites []Invite) error {
 
 	var queue = fmt.Sprintf("https://sqs.ap-southeast-1.amazonaws.com/%s/invites", h.Env.AccountID)
 	log.Infof("%d invites to queue: %s", len(invites), queue)
@@ -255,7 +255,7 @@ func (h handler) queue(invites []invite) error {
 	return nil
 }
 
-func (h handler) processInvite(invites []invite) (result error) {
+func (h handler) processInvites(invites []Invite) (result error) {
 
 	log.Infof("Number of invites to process: %d", len(invites))
 
@@ -276,88 +276,87 @@ func (h handler) processInvite(invites []invite) (result error) {
 			"num":    num,
 			"invite": invite,
 		})
+		err := h.processInvite(invite)
 
-		// Processing invite one by one. If it fails, we move onto next one.
-
-		dt, err := h.checkProcessedDatetime(invite.ID)
-		if err == nil && dt.Valid {
-			ctx.Warnf("already processed %s", time.Since(dt.Time))
-			err = h.markInvitesProcessed([]string{invite.ID})
-			if err != nil {
-				ctx.WithError(err).Error("failed to run mark invite as processed")
-				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			}
-			continue
-		}
-
-		_, err = h.checkIfInvitationExistsAlready(invite.ID)
-		// If there is an error, we know that invite ID does not exist in the ut_invitation_api_data table already
-		if err != nil {
-			ctx.Info("Step 1, inserting")
-			err = h.step1Insert(invite)
-			if err != nil {
-				ctx.WithError(err).Error("failed to run step1Insert")
-				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-				continue
-			}
-		} else {
-			// Have not seen this message yet
-			ctx.Info("Skipping Step 1, as it appears to be inserted already")
-		}
-
-		ctx.Info("Step 2, running SQL")
-
-		if invite.CaseID == 0 { // if there is no CaseID, invite user to a role in the unit
-			err = h.runsql(invite_user_in_a_role_in_a_unit, invite)
-			if err != nil {
-				ctx.WithError(err).Error("failed to invite user to a role in the unit")
-				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-				continue
-			}
-		} else { // if there is a CaseID then invite to a case
-			err = h.runsql(invite_user_to_a_case, invite)
-			if err != nil {
-				ctx.WithError(err).Error("failed to invite user to a case")
-				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-				continue
-			}
-		}
-
-		dtProcessCheck, err := h.checkProcessedDatetime(invite.ID)
-		// There is an error, there is no record
-		if err != nil {
-			ctx.WithError(err).Errorf("no process datetime: %s", invite.ID)
-			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			// Continue processing and not mark done
-			continue
-		}
-
-		ctx.Infof("Step 3, telling frontend we are done, since it was processed %s ago",
-			time.Since(dtProcessCheck.Time))
-
-		err = h.markInvitesProcessed([]string{invite.ID})
 		if err != nil {
 			ctx.WithError(err).Error("failed to run mark invite as processed")
 			result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-			continue
-		}
-
-		if invite.CaseID != 0 {
-			ctx.Infof("Step 4, with case id %d, send a message", invite.CaseID)
-			err = h.runsql(add_invitation_sent_message_to_a_case_v3, invite)
-			if err != nil {
-				ctx.WithError(err).Error("failed to run 2_add_invitation_sent_message_to_a_case_v3.0.sql")
-				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
-				continue
-			}
-		} else {
-			ctx.Warn("Skipping (Step 4) 2_add_invitation_sent_message_to_a_case_v3.0.sql since CaseID is empty")
 		}
 	}
 	return result
 }
 
-func (h handler) getInvites() (lr []invite, err error) {
+func (h handler) processInvite(invite Invite) (result error) {
+
+	dt, err := h.checkProcessedDatetime(invite.ID)
+	if err == nil && dt.Valid {
+		log.Warnf("already processed %s", time.Since(dt.Time))
+		err = h.markInvitesProcessed([]string{invite.ID})
+		if err != nil {
+			log.WithError(err).Error("failed to mark invite as processed")
+			return err
+		}
+		// Stop processing
+		return nil
+	}
+
+	_, err = h.checkIfInvitationExistsAlready(invite.ID)
+	// If there is an error, we know that invite ID does not exist in the ut_invitation_api_data table already
+	if err != nil {
+		log.Infof("Step 1, inserting %s", invite.ID)
+		err = h.step1Insert(invite)
+		if err != nil {
+			log.WithError(err).Error("failed to run step1Insert")
+			return err
+		}
+	} else {
+		log.Infof("Skipping Step 1, as %s appears to be inserted already", invite.ID)
+	}
+
+	if invite.CaseID == 0 { // if there is no CaseID, invite user to a role in the unit
+		err = h.runsql(invite_user_in_a_role_in_a_unit, invite)
+		if err != nil {
+			log.WithError(err).Error("failed to invite_user_in_a_role_in_a_unit")
+			return err
+		}
+	} else { // if there is a CaseID then invite to a case
+		err = h.runsql(invite_user_to_a_case, invite)
+		if err != nil {
+			log.WithError(err).Error("failed to invite_user_to_a_case")
+			return err
+		}
+	}
+
+	dtProcessCheck, err := h.checkProcessedDatetime(invite.ID)
+	// If there is an error, there is no record
+	if err != nil {
+		log.WithError(err).Errorf("no process datetime: %s", invite.ID)
+		return err
+	}
+
+	log.Infof("Step 3, telling frontend we are done, since %s was processed %s ago", invite.ID,
+		time.Since(dtProcessCheck.Time))
+
+	err = h.markInvitesProcessed([]string{invite.ID})
+	if err != nil {
+		log.WithError(err).Error("failed to run mark invite as processed")
+		return err
+	}
+
+	if invite.CaseID != 0 {
+		log.Infof("Step 4, with case id %d, send a message", invite.CaseID)
+		err = h.runsql(add_invitation_sent_message_to_a_case_v3, invite)
+		if err != nil {
+			log.WithError(err).Error("failed to run add_invitation_sent_message_to_a_case_v3")
+			return err
+		}
+	} else {
+		log.Warn("Skipping (Step 4) 2_add_invitation_sent_message_to_a_case_v3.0.sql since CaseID is empty")
+	}
+	return nil
+}
+
+func (h handler) getInvites() (lr []Invite, err error) {
 	resp, err := http.Get(h.Domain + "/api/pending-invitations?accessToken=" + h.APIAccessToken)
 	if err != nil {
 		return lr, err
@@ -436,7 +435,7 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
 	// log.Infof("Input %+v", invites)
 
-	err = h.processInvite(invites)
+	err = h.processInvites(invites)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -455,7 +454,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	dec := json.NewDecoder(tee)
 
-	var invites []invite
+	var invites []Invite
 	err := dec.Decode(&invites)
 
 	if err != nil {
