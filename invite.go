@@ -276,7 +276,7 @@ func (h handler) processInvites(invites []Invite) (result error) {
 			"num":    num,
 			"invite": invite,
 		})
-		err := h.processInvite(invite)
+		err := h.ProcessInvite(invite)
 
 		if err != nil {
 			ctx.WithError(err).Error("failed to run mark invite as processed")
@@ -286,7 +286,7 @@ func (h handler) processInvites(invites []Invite) (result error) {
 	return result
 }
 
-func (h handler) processInvite(invite Invite) (result error) {
+func (h handler) ProcessInvite(invite Invite) (result error) {
 
 	dt, err := h.checkProcessedDatetime(invite.ID)
 	if err == nil && dt.Valid {
