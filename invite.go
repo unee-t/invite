@@ -41,7 +41,7 @@ type handler struct {
 	Domain         string // e.g. https://dev.case.unee-t.com
 	APIAccessToken string // e.g. O8I9svDTizOfLfdVA5ri
 	DB             *sql.DB
-	Code           env.EnvCode
+	Env            env.Env
 }
 
 // loosely models ut_invitation_api_data. JSON binding come from MEFE API /api/pending-invitations
@@ -111,10 +111,10 @@ func New() (h handler, err error) {
 			mysqlhost),
 		Domain:         casehost,
 		APIAccessToken: e.GetSecret("API_ACCESS_TOKEN"),
-		Code:           e.Code,
+		Env:            e,
 	}
 
-	log.Infof("h.Code is %d", h.Code)
+	log.Infof("h.Env.Code is %d", h.Env.Code)
 	log.Infof("Frontend URL: %v", h.Domain)
 
 	h.DB, err = sql.Open("mysql", h.DSN)
@@ -188,8 +188,8 @@ func esql(a asset) asset {
 }
 
 func (h handler) runsql(sqlfile asset, invite invite) (err error) {
-	log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Code)
-	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, h.Code))
+	log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Env.Code)
+	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, h.Env.Code))
 	if err != nil {
 		log.WithError(err).Error("running sql failed")
 	}
@@ -222,10 +222,21 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 	}
 	return result
 }
+func (h handler) queue(invites []invite) error {
+
+	//	client := sqs.New(h.)
+
+	return nil
+}
 
 func (h handler) processInvite(invites []invite) (result error) {
 
 	log.Infof("Number of invites to process: %d", len(invites))
+
+	if s := os.Getenv("UP_STAGE"); s != "" {
+		log.Info("Running in a Lambda context, will add invites to queue")
+		return h.queue(invites)
+	}
 
 	for num, invite := range invites {
 
@@ -385,15 +396,13 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("handlePull: %s", r.Header.Get("User-Agent"))
 
-	w.Header().Set("X-Robots-Tag", "none") // We don't want Google to index us
-
 	invites, err := h.getInvites()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Infof("Input %+v", invites)
+	// log.Infof("Input %+v", invites)
 
 	err = h.processInvite(invites)
 	if err != nil {
