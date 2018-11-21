@@ -1,6 +1,6 @@
 // +build ignore
 
-package invite
+package main
 
 import (
 	"bufio"
