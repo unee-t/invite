@@ -1,4 +1,9 @@
-package main
+//go:generate -command asset go run asset.go
+//go:generate asset sql/1_invite_user_to_a_case.sql
+//go:generate asset sql/2_add_invitation_sent_message_to_a_case_v3.0.sql
+//go:generate asset sql/invite_user_in_a_role_in_a_unit.sql
+
+package invite
 
 import (
 	"bytes"
@@ -19,7 +24,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/tj/go/http/response"
@@ -37,7 +41,7 @@ type handler struct {
 	DSN            string // e.g. "bugzilla:secret@tcp(auroradb.dev.unee-t.com:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL"
 	Domain         string // e.g. https://dev.case.unee-t.com
 	APIAccessToken string // e.g. O8I9svDTizOfLfdVA5ri
-	db             *sql.DB
+	DB             *sql.DB
 	Code           env.EnvCode
 }
 
@@ -114,7 +118,7 @@ func New() (h handler, err error) {
 	log.Infof("h.Code is %d", h.Code)
 	log.Infof("Frontend URL: %v", h.Domain)
 
-	h.db, err = sql.Open("mysql", h.DSN)
+	h.DB, err = sql.Open("mysql", h.DSN)
 	if err != nil {
 		log.WithError(err).Fatal("error opening database")
 		return
@@ -142,27 +146,8 @@ func (h handler) BasicEngine() http.Handler {
 	return app
 }
 
-func main() {
-
-	h, err := New()
-	if err != nil {
-		log.WithError(err).Fatal("error setting configuration")
-		return
-	}
-
-	defer h.db.Close()
-
-	addr := ":" + os.Getenv("PORT")
-	app := h.BasicEngine()
-
-	if err := http.ListenAndServe(addr, env.Protect(app, h.APIAccessToken)); err != nil {
-		log.WithError(err).Fatal("error listening")
-	}
-
-}
-
 func (h handler) lookupRoleID(roleName string) (IDRoleType int, err error) {
-	err = h.db.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&IDRoleType)
+	err = h.DB.QueryRow("SELECT id_role_type FROM ut_role_types WHERE role_type=?", roleName).Scan(&IDRoleType)
 	return IDRoleType, err
 }
 
@@ -173,7 +158,7 @@ func (h handler) step1Insert(invite invite) (err error) {
 	}
 	log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
-	_, err = h.db.Exec(
+	_, err = h.DB.Exec(
 		`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
 			bzfe_invitor_user_id,
 			bz_user_id,
@@ -205,7 +190,7 @@ func (h handler) runsql(sqlfile string, invite invite) (err error) {
 		return
 	}
 	log.Infof("Running %s with invite id %s with env %d", sqlfile, invite.ID, h.Code)
-	_, err = h.db.Exec(fmt.Sprintf(string(sqlscript), invite.ID, h.Code))
+	_, err = h.DB.Exec(fmt.Sprintf(string(sqlscript), invite.ID, h.Code))
 	if err != nil {
 		log.WithError(err).Error("running sql failed")
 	}
@@ -461,7 +446,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 	var outArg string
-	_, err := h.db.Exec("CALL ProcName")
+	_, err := h.DB.Exec("CALL ProcName")
 	if err != nil {
 		log.WithError(err).Error("running proc")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -498,13 +483,13 @@ func (h handler) processedAlready(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) checkProcessedDatetime(MefeInvitationID string) (ProcessedDatetime mysql.NullTime, err error) {
-	err = h.db.QueryRow("SELECT processed_datetime FROM ut_invitation_api_data WHERE mefe_invitation_id=?", MefeInvitationID).Scan(&ProcessedDatetime)
+	err = h.DB.QueryRow("SELECT processed_datetime FROM ut_invitation_api_data WHERE mefe_invitation_id=?", MefeInvitationID).Scan(&ProcessedDatetime)
 	// log.Infof("Valid date time ? %v", ProcessedDatetime.Valid)
 	return ProcessedDatetime, err
 }
 
 func (h handler) checkIfInvitationExistsAlready(MefeInvitationID string) (inviteID string, err error) {
-	err = h.db.QueryRow("SELECT mefe_invitation_id FROM ut_invitation_api_data WHERE mefe_invitation_id=?",
+	err = h.DB.QueryRow("SELECT mefe_invitation_id FROM ut_invitation_api_data WHERE mefe_invitation_id=?",
 		MefeInvitationID).Scan(&inviteID)
 	return inviteID, err
 }
@@ -519,7 +504,7 @@ func fail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) ping(w http.ResponseWriter, r *http.Request) {
-	err := h.db.Ping()
+	err := h.DB.Ping()
 	if err != nil {
 		log.WithError(err).Error("failed to ping database")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
