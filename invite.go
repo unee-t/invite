@@ -22,6 +22,8 @@ import (
 	"github.com/apex/log/handlers/text"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	multierror "github.com/hashicorp/go-multierror"
@@ -224,7 +226,31 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 }
 func (h handler) queue(invites []invite) error {
 
-	//	client := sqs.New(h.)
+	var queue = fmt.Sprintf("https://sqs.ap-southeast-1.amazonaws.com/%s/invites", h.Env.AccountID)
+	log.Infof("%d invites to queue: %s", len(invites), queue)
+
+	client := sqs.New(h.Env.Cfg)
+
+	for i, v := range invites {
+
+		// TODO keep a simple map of already queued invites to prevent duplicates
+		jinvite, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+
+		// TODO Batch process?
+		// https://godoc.org/github.com/aws/aws-sdk-go-v2/service/sqs
+		req := client.SendMessageRequest(&sqs.SendMessageInput{
+			MessageBody: aws.String(string(jinvite)),
+			QueueUrl:    aws.String(queue),
+		})
+		resp, err := req.Send()
+		if err != nil {
+			return err
+		}
+		log.Infof("Queued %d:%s: %s", i, v.ID, resp)
+	}
 
 	return nil
 }
@@ -233,10 +259,16 @@ func (h handler) processInvite(invites []invite) (result error) {
 
 	log.Infof("Number of invites to process: %d", len(invites))
 
+	// Detect if we are running on AWS lambda, as opposed to just locally
 	if s := os.Getenv("UP_STAGE"); s != "" {
 		log.Info("Running in a Lambda context, will add invites to queue")
+		// Instead of processing the invites here, we queue them and process them because
+		// * we want to prevent race conditions, queue lambda has concurrency of 1
+		// * we want to prevent API gateway timeouts
 		return h.queue(invites)
 	}
+
+	log.Warn("Processing locally, assuming no time outs and the request is uninterrupted")
 
 	for num, invite := range invites {
 
