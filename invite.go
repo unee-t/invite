@@ -1,7 +1,7 @@
 //go:generate -command asset go run asset.go
-//go:generate asset sql/1_invite_user_to_a_case.sql
-//go:generate asset sql/2_add_invitation_sent_message_to_a_case_v3.0.sql
-//go:generate asset sql/invite_user_in_a_role_in_a_unit.sql
+//go:generate asset -wrap=esql invite_user_to_a_case.sql
+//go:generate asset -wrap=esql add_invitation_sent_message_to_a_case_v3.0.sql
+//go:generate asset -wrap=esql invite_user_in_a_role_in_a_unit.sql
 
 package invite
 
@@ -183,9 +183,13 @@ func (h handler) step1Insert(invite invite) (err error) {
 	return
 }
 
-func (h handler) runsql(sqlfile sql.asset, invite invite) (err error) {
+func esql(a asset) asset {
+	return a
+}
+
+func (h handler) runsql(sqlfile asset, invite invite) (err error) {
 	log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Code)
-	_, err = h.DB.Exec(sqlfile.Content, invite.ID, h.Code)
+	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, h.Code))
 	if err != nil {
 		log.WithError(err).Error("running sql failed")
 	}
@@ -208,7 +212,7 @@ func (h handler) inviteUsertoUnit(invites []invite) (result error) {
 		}
 
 		// Run invite_user_in_a_role_in_a_unit.sql
-		err = h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
+		err = h.runsql(invite_user_in_a_role_in_a_unit, invite)
 
 		if err != nil {
 			ctx.WithError(err).Error("failed to run invite_user_in_a_role_in_a_unit.sql")
@@ -261,14 +265,14 @@ func (h handler) processInvite(invites []invite) (result error) {
 		ctx.Info("Step 2, running SQL")
 
 		if invite.CaseID == 0 { // if there is no CaseID, invite user to a role in the unit
-			err = h.runsql("invite_user_in_a_role_in_a_unit.sql", invite)
+			err = h.runsql(invite_user_in_a_role_in_a_unit, invite)
 			if err != nil {
 				ctx.WithError(err).Error("failed to invite user to a role in the unit")
 				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
 				continue
 			}
 		} else { // if there is a CaseID then invite to a case
-			err = h.runsql("1_invite_user_to_a_case.sql", invite)
+			err = h.runsql(invite_user_to_a_case, invite)
 			if err != nil {
 				ctx.WithError(err).Error("failed to invite user to a case")
 				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
@@ -297,7 +301,7 @@ func (h handler) processInvite(invites []invite) (result error) {
 
 		if invite.CaseID != 0 {
 			ctx.Infof("Step 4, with case id %d, send a message", invite.CaseID)
-			err = h.runsql("2_add_invitation_sent_message_to_a_case_v3.0.sql", invite)
+			err = h.runsql(add_invitation_sent_message_to_a_case_v3, invite)
 			if err != nil {
 				ctx.WithError(err).Error("failed to run 2_add_invitation_sent_message_to_a_case_v3.0.sql")
 				result = multierror.Append(result, multierror.Prefix(err, invite.ID))
