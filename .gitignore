@@ -1,3 +1,4 @@
 up.json
 gin-bin
 invite
+*.gen.go
