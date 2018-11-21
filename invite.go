@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -184,13 +183,9 @@ func (h handler) step1Insert(invite invite) (err error) {
 	return
 }
 
-func (h handler) runsql(sqlfile string, invite invite) (err error) {
-	sqlscript, err := ioutil.ReadFile(fmt.Sprintf("sql/%s", sqlfile))
-	if err != nil {
-		return
-	}
-	log.Infof("Running %s with invite id %s with env %d", sqlfile, invite.ID, h.Code)
-	_, err = h.DB.Exec(fmt.Sprintf(string(sqlscript), invite.ID, h.Code))
+func (h handler) runsql(sqlfile sql.asset, invite invite) (err error) {
+	log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Code)
+	_, err = h.DB.Exec(sqlfile.Content, invite.ID, h.Code)
 	if err != nil {
 		log.WithError(err).Error("running sql failed")
 	}
