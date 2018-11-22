@@ -52,7 +52,7 @@ func handler(ctx context.Context, evt SQStrigger) (string, error) {
 		var ivt invite.Invite
 		err := json.Unmarshal([]byte(v.Body), &ivt)
 
-		log.Infof("Processing invite %d, %s", i, ivt.ID)
+		log.Infof("Processing invite %d, Message ID: %s, Invite ID: %s", i, v.MessageID, ivt.ID)
 		err = h.ProcessInvite(ivt)
 		if err != nil {
 			return "", err

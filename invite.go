@@ -247,9 +247,10 @@ func (h handler) queue(invites []Invite) error {
 		})
 		resp, err := req.Send()
 		if err != nil {
+			log.WithError(err).Errorf("failed to run queue %s", v.ID)
 			return err
 		}
-		log.Infof("Queued %d:%s: %s", i, v.ID, resp)
+		log.Infof("Queued #%d ID: %s SQS resp: %s", i, v.ID, resp)
 	}
 
 	return nil
@@ -264,7 +265,7 @@ func (h handler) processInvites(invites []Invite) (result error) {
 		log.Info("Running in a Lambda context, will add invites to queue")
 		// Instead of processing the invites here, we queue them and process them because
 		// * we want to prevent race conditions, queue lambda has concurrency of 1
-		// * we want to prevent API gateway timeouts
+		// * we want to prevent API gateway timeouts (lambda without APIGW has a timeout of max 15 mins!)
 		return h.queue(invites)
 	}
 
