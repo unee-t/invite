@@ -8,35 +8,16 @@ import (
 	"github.com/unee-t/invite"
 
 	"github.com/apex/log"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
-
-type SQStrigger struct {
-	Records []struct {
-		MessageID     string `json:"messageId"`
-		ReceiptHandle string `json:"receiptHandle"`
-		Body          string `json:"body"`
-		Attributes    struct {
-			ApproximateReceiveCount          string `json:"ApproximateReceiveCount"`
-			SentTimestamp                    string `json:"SentTimestamp"`
-			SenderID                         string `json:"SenderId"`
-			ApproximateFirstReceiveTimestamp string `json:"ApproximateFirstReceiveTimestamp"`
-		} `json:"attributes"`
-		MessageAttributes struct {
-		} `json:"messageAttributes"`
-		Md5OfBody      string `json:"md5OfBody"`
-		EventSource    string `json:"eventSource"`
-		EventSourceARN string `json:"eventSourceARN"`
-		AwsRegion      string `json:"awsRegion"`
-	} `json:"Records"`
-}
 
 func main() {
 	log.SetHandler(jsonhandler.Default)
 	lambda.Start(handler)
 }
 
-func handler(ctx context.Context, evt SQStrigger) (string, error) {
+func handler(ctx context.Context, evt events.SQSEvent) (string, error) {
 
 	h, err := invite.New()
 	if err != nil {
@@ -52,7 +33,7 @@ func handler(ctx context.Context, evt SQStrigger) (string, error) {
 		var ivt invite.Invite
 		err := json.Unmarshal([]byte(v.Body), &ivt)
 
-		log.Infof("Processing invite %d, Message ID: %s, Invite ID: %s", i, v.MessageID, ivt.ID)
+		log.Infof("Processing invite %d, Message ID: %s, Invite ID: %s", i, v.MessageId, ivt.ID)
 		err = h.ProcessInvite(ivt)
 		if err != nil {
 			return "", err
