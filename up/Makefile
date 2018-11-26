@@ -19,7 +19,7 @@ PRODUPJSON = '.profile |= "uneet-prod" \
 dev:
 	@echo $$AWS_ACCESS_KEY_ID
 	jq $(DEVUPJSON) up.json.in > up.json
-	up deploy production
+	up -v deploy production
 
 demo:
 	@echo $$AWS_ACCESS_KEY_ID
