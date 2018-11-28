@@ -1,0 +1,8 @@
+{
+  "name": "invitefromqueue",
+  "description": "",
+  "memory": 128,
+  "timeout": 5,
+  "role": "arn:aws:iam::915001051872:role/invitefromqueue_lambda_function",
+  "environment": {}
+}

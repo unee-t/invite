@@ -1,0 +1,2 @@
+#!/bin/bash
+aws --profile uneet-dev sqs receive-message --queue-url https://sqs.ap-southeast-1.amazonaws.com/812644853088/invites
