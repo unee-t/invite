@@ -12,6 +12,11 @@ demo:
 	@echo $$AWS_ACCESS_KEY_ID
 	apex -r $(REGION) --env demo deploy
 
+
+demologs:
+	@echo $$AWS_ACCESS_KEY_ID
+	apex -r $(REGION) --env demo logs -f
+
 prod:
 	@echo $$AWS_ACCESS_KEY_ID
 	apex -r $(REGION) --env prod deploy

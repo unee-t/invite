@@ -26,30 +26,34 @@ type SQSBatch struct {
 
 func main() {
 
-	var sqs []SQSBatch
+	for profileID := 2333; profileID <= 2343; profileID++ {
+		invitefilename := fmt.Sprintf("invites-%d.json", profileID)
+		var sqs []SQSBatch
 
-	for i := 1342; i < 1352; i++ {
-		u1 := uuid.Must(uuid.NewV4())
-		ivt := invite.Invite{
-			ID:         fmt.Sprintf("%s", u1),
-			InvitedBy:  2348,
-			Invitee:    2349,
-			Role:       "Agent",
-			IsOccupant: false,
-			UnitID:     i,
-			Type:       "keep_default",
+		for i := 1342; i < 1352; i++ {
+			u1 := uuid.Must(uuid.NewV4())
+			ivt := invite.Invite{
+				ID:         fmt.Sprintf("%s", u1),
+				InvitedBy:  2348,
+				Invitee:    profileID,
+				Role:       "Agent",
+				IsOccupant: false,
+				UnitID:     i,
+				Type:       "keep_default",
+			}
+			invitesJSON, _ := json.Marshal(ivt)
+			sqs = append(sqs, SQSBatch{
+				ID:          fmt.Sprintf("%s", u1),
+				MessageBody: string(invitesJSON),
+			})
 		}
-		invitesJSON, _ := json.Marshal(ivt)
-		sqs = append(sqs, SQSBatch{
-			ID:          fmt.Sprintf("%s", u1),
-			MessageBody: string(invitesJSON),
-		})
-	}
 
-	sqsJSON, _ := json.MarshalIndent(sqs, "", "\t")
-	err := ioutil.WriteFile("invites.json", sqsJSON, 0644)
-	if err != nil {
-		panic(err)
+		sqsJSON, _ := json.MarshalIndent(sqs, "", "\t")
+		err := ioutil.WriteFile(invitefilename, sqsJSON, 0644)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Wrote %s\n", invitefilename)
 	}
 
 }
