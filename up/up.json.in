@@ -21,6 +21,13 @@
         "Action": [
           "ssm:GetParameter"
         ]
+      },
+      {
+        "Action": [
+          "sqs:*"
+        ],
+        "Effect": "Allow",
+        "Resource": "*"
       }
     ]
   },

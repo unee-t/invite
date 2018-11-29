@@ -1,0 +1,8 @@
+{
+  "name": "invitefromqueue",
+  "profile": "uneet-prod",
+  "memory": 128,
+  "timeout": 60,
+  "role": "arn:aws:iam::192458993663:role/invitefromqueue_lambda_function",
+  "environment": {}
+}
