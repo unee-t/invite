@@ -26,15 +26,15 @@ type SQSBatch struct {
 
 func main() {
 
-	for profileID := 2333; profileID <= 2343; profileID++ {
+	for profileID := 2000; profileID <= 2349; profileID++ {
 		invitefilename := fmt.Sprintf("invites-%d.json", profileID)
 		var sqs []SQSBatch
 
-		for i := 1342; i < 1352; i++ {
+		for i := 1924; i < 1925; i++ {
 			u1 := uuid.Must(uuid.NewV4())
 			ivt := invite.Invite{
 				ID:         fmt.Sprintf("%s", u1),
-				InvitedBy:  2348,
+				InvitedBy:  2349,
 				Invitee:    profileID,
 				Role:       "Agent",
 				IsOccupant: false,
