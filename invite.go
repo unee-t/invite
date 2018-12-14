@@ -7,6 +7,7 @@ package invite
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -18,8 +19,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	jsonhandler "github.com/apex/log/handlers/json"
-	"github.com/apex/log/handlers/text"
+	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
@@ -44,6 +44,7 @@ type handler struct {
 	APIAccessToken string // e.g. O8I9svDTizOfLfdVA5ri
 	DB             *sql.DB
 	Env            env.Env
+	Log            *log.Entry
 }
 
 // Invite loosely models ut_invitation_api_data. JSON binding come from MEFE API /api/pending-invitations
@@ -58,22 +59,13 @@ type Invite struct {
 	Type       string `json:"type"` // invitation type
 }
 
-func init() {
-	log.SetHandler(text.Default)
-
-	if s := os.Getenv("UP_STAGE"); s != "" {
-		log.SetHandler(jsonhandler.Default)
-		version = s
-	}
-
-	if v := os.Getenv("UP_COMMIT"); v != "" {
-		commit = v
-	}
-
-}
-
 // New setups the configuration assuming various parameters have been setup in the AWS account
-func New() (h handler, err error) {
+func New(ctx context.Context) (h handler, err error) {
+
+	ctxObj, _ := lambdacontext.FromContext(ctx)
+	logWithRequestID := log.WithFields(log.Fields{
+		"RequestID": ctxObj.AwsRequestID,
+	})
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
 	if err != nil {
@@ -107,17 +99,17 @@ func New() (h handler, err error) {
 	}
 
 	h = handler{
-		DSN: fmt.Sprintf("%s:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL",
+		DSN: fmt.Sprintf("%s:%s@tcp(%s:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL&timeout=5s",
 			e.GetSecret("MYSQL_USER"),
 			e.GetSecret("MYSQL_PASSWORD"),
 			mysqlhost),
 		Domain:         casehost,
 		APIAccessToken: e.GetSecret("API_ACCESS_TOKEN"),
 		Env:            e,
+		Log:            logWithRequestID,
 	}
 
-	log.Infof("h.Env.Code is %d", h.Env.Code)
-	log.Infof("Frontend URL: %v", h.Domain)
+	h.Log.Infof("h.Env.Code is %d, Frontend URL: %v", h.Env.Code, h.Domain)
 
 	h.DB, err = sql.Open("mysql", h.DSN)
 	if err != nil {
@@ -157,7 +149,7 @@ func (h handler) step1Insert(invite Invite) (err error) {
 	if err != nil {
 		return
 	}
-	log.Infof("%s role converted to id: %d", invite.Role, roleID)
+	h.Log.Infof("%s role converted to id: %d", invite.Role, roleID)
 
 	_, err = h.DB.Exec(
 		`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
@@ -190,10 +182,10 @@ func esql(a asset) asset {
 }
 
 func (h handler) runsql(sqlfile asset, invite Invite) (err error) {
-	log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Env.Code)
+	h.Log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Env.Code)
 	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, h.Env.Code))
 	if err != nil {
-		log.WithError(err).Error("running sql failed")
+		h.Log.WithError(err).Error("running sql failed")
 	}
 	return
 }
@@ -201,7 +193,7 @@ func (h handler) runsql(sqlfile asset, invite Invite) (err error) {
 func (h handler) inviteUsertoUnit(invites []Invite) (result error) {
 	for _, invite := range invites {
 
-		ctx := log.WithFields(log.Fields{
+		ctx := h.Log.WithFields(log.Fields{
 			"invite": invite,
 		})
 
@@ -227,7 +219,7 @@ func (h handler) inviteUsertoUnit(invites []Invite) (result error) {
 func (h handler) queue(invites []Invite) error {
 
 	var queue = fmt.Sprintf("https://sqs.ap-southeast-1.amazonaws.com/%s/invites", h.Env.AccountID)
-	log.Infof("%d invites to queue: %s", len(invites), queue)
+	h.Log.Infof("%d invites to queue: %s", len(invites), queue)
 
 	client := sqs.New(h.Env.Cfg)
 
@@ -247,7 +239,7 @@ func (h handler) queue(invites []Invite) error {
 		})
 		resp, err := req.Send()
 		if err != nil {
-			log.WithError(err).Errorf("failed to run queue %s", v.ID)
+			h.Log.WithError(err).Errorf("failed to run queue %s", v.ID)
 			return err
 		}
 		log.Infof("Queued #%d ID: %s SQS resp: %s", i, v.ID, resp)
@@ -273,7 +265,7 @@ func (h handler) processInvites(invites []Invite) (result error) {
 
 	for num, invite := range invites {
 
-		ctx := log.WithFields(log.Fields{
+		ctx := h.Log.WithFields(log.Fields{
 			"num":    num,
 			"invite": invite,
 		})
@@ -291,39 +283,41 @@ func (h handler) ProcessInvite(invite Invite) (result error) {
 
 	dt, err := h.checkProcessedDatetime(invite.ID)
 	if err == nil && dt.Valid {
-		log.Warnf("already processed %s", time.Since(dt.Time))
+		h.Log.Warnf("already processed %s", time.Since(dt.Time))
 		err = h.markInvitesProcessed([]string{invite.ID})
 		if err != nil {
-			log.WithError(err).Error("failed to mark invite as processed")
+			h.Log.WithError(err).Error("failed to mark invite as processed")
 			return err
 		}
 		// Stop processing
 		return nil
 	}
 
+	h.Log.Infof("Checking if invitation %s exists already", invite.ID)
 	_, err = h.checkIfInvitationExistsAlready(invite.ID)
 	// If there is an error, we know that invite ID does not exist in the ut_invitation_api_data table already
 	if err != nil {
-		log.Infof("Step 1, inserting %s", invite.ID)
+		h.Log.Infof("Step 1, inserting %s", invite.ID)
 		err = h.step1Insert(invite)
 		if err != nil {
-			log.WithError(err).Error("failed to run step1Insert")
+			h.Log.WithError(err).Error("failed to run step1Insert")
 			return err
 		}
 	} else {
-		log.Infof("Skipping Step 1, as %s appears to be inserted already", invite.ID)
+		h.Log.Infof("Skipping Step 1, as %s appears to be inserted already", invite.ID)
 	}
 
 	if invite.CaseID == 0 { // if there is no CaseID, invite user to a role in the unit
 		err = h.runsql(invite_user_in_a_role_in_a_unit, invite)
 		if err != nil {
-			log.WithError(err).Error("failed to invite_user_in_a_role_in_a_unit")
+			h.Log.WithError(err).Error("failed to invite_user_in_a_role_in_a_unit")
 			return err
 		}
 	} else { // if there is a CaseID then invite to a case
+		h.Log.Info("Inviting to case")
 		err = h.runsql(invite_user_to_a_case, invite)
 		if err != nil {
-			log.WithError(err).Error("failed to invite_user_to_a_case")
+			h.Log.WithError(err).Error("failed to invite_user_to_a_case")
 			return err
 		}
 	}
@@ -331,28 +325,28 @@ func (h handler) ProcessInvite(invite Invite) (result error) {
 	dtProcessCheck, err := h.checkProcessedDatetime(invite.ID)
 	// If there is an error, there is no record
 	if err != nil {
-		log.WithError(err).Errorf("no process datetime: %s", invite.ID)
+		h.Log.WithError(err).Errorf("no process datetime: %s", invite.ID)
 		return err
 	}
 
-	log.Infof("Step 3, telling frontend we are done, since %s was processed %s ago", invite.ID,
+	h.Log.Infof("Step 3, telling frontend we are done, since %s was processed %s ago", invite.ID,
 		time.Since(dtProcessCheck.Time))
 
 	err = h.markInvitesProcessed([]string{invite.ID})
 	if err != nil {
-		log.WithError(err).Error("failed to run mark invite as processed")
+		h.Log.WithError(err).Error("failed to run mark invite as processed")
 		return err
 	}
 
 	if invite.CaseID != 0 {
-		log.Infof("Step 4, with case id %d, send a message", invite.CaseID)
+		h.Log.Infof("Step 4, with case id %d, send a message", invite.CaseID)
 		err = h.runsql(add_invitation_sent_message_to_a_case_v3, invite)
 		if err != nil {
-			log.WithError(err).Error("failed to run add_invitation_sent_message_to_a_case_v3")
+			h.Log.WithError(err).Error("failed to run add_invitation_sent_message_to_a_case_v3")
 			return err
 		}
 	} else {
-		log.Warn("Skipping (Step 4) 2_add_invitation_sent_message_to_a_case_v3.0.sql since CaseID is empty")
+		h.Log.Warn("Skipping (Step 4) 2_add_invitation_sent_message_to_a_case_v3.0.sql since CaseID is empty")
 	}
 	return nil
 }
@@ -371,18 +365,18 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 
 	jids, err := json.Marshal(ids)
 	if err != nil {
-		log.WithError(err).Error("marshalling")
+		h.Log.WithError(err).Error("marshalling")
 		return err
 	}
 
-	log.Infof("Marking as done: %s", jids)
+	h.Log.Infof("Marking as done: %s", jids)
 
 	payload := strings.NewReader(string(jids))
 
 	url := h.Domain + "/api/pending-invitations/done?accessToken=" + h.APIAccessToken
 	req, err := http.NewRequest("PUT", url, payload)
 	if err != nil {
-		log.WithError(err).Error("making PUT")
+		h.Log.WithError(err).Error("making PUT")
 		return err
 	}
 
@@ -391,7 +385,7 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.WithError(err).Error("PUT request")
+		h.Log.WithError(err).Error("PUT request")
 		return err
 	}
 
@@ -405,12 +399,12 @@ func (h handler) markInvitesProcessed(ids []string) (err error) {
 	// defer res.Body.Close()
 	// body, err := ioutil.ReadAll(res.Body)
 	// if err != nil {
-	// 	log.WithError(err).Error("reading body")
+	// 	h.Log.WithError(err).Error("reading body")
 	// }
 
 	// i, err := strconv.Atoi(string(body))
 	// if err != nil {
-	// 	log.WithError(err).Error("cannot convert into integer")
+	// 	h.Log.WithError(err).Error("cannot convert into integer")
 	// }
 
 	//log.Infof("Response: %v", res)
@@ -460,7 +454,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		dump, _ := httputil.DumpRequest(r, false)
-		log.WithError(err).Errorf("%s\n%v", dump, buf)
+		h.Log.WithError(err).Errorf("%s\n%v", dump, buf)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -488,7 +482,7 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 	var outArg string
 	_, err := h.DB.Exec("CALL ProcName")
 	if err != nil {
-		log.WithError(err).Error("running proc")
+		h.Log.WithError(err).Error("running proc")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -546,7 +540,7 @@ func fail(w http.ResponseWriter, r *http.Request) {
 func (h handler) ping(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.Ping()
 	if err != nil {
-		log.WithError(err).Error("failed to ping database")
+		h.Log.WithError(err).Error("failed to ping database")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	fmt.Fprintf(w, "OK")
