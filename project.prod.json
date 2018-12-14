@@ -4,5 +4,15 @@
   "memory": 128,
   "timeout": 60,
   "role": "arn:aws:iam::192458993663:role/invitefromqueue_lambda_function",
-  "environment": {}
+  "environment": {},
+  "vpc": {
+    "subnets": [
+      "subnet-0df289b6d96447a84",
+      "subnet-0e41c71ad02ee7e99",
+      "subnet-01cb9ee064743ac56"
+    ],
+    "securityGroups": [
+      "sg-9f5b5ef8"
+    ]
+  }
 }
