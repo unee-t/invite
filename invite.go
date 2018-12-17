@@ -62,10 +62,16 @@ type Invite struct {
 // New setups the configuration assuming various parameters have been setup in the AWS account
 func New(ctx context.Context) (h handler, err error) {
 
-	ctxObj, _ := lambdacontext.FromContext(ctx)
-	logWithRequestID := log.WithFields(log.Fields{
-		"RequestID": ctxObj.AwsRequestID,
-	})
+	var logWithRequestID *log.Entry
+
+	ctxObj, ok := lambdacontext.FromContext(ctx)
+	if ok {
+		logWithRequestID = log.WithFields(log.Fields{
+			"RequestID": ctxObj.AwsRequestID,
+		})
+	} else {
+		logWithRequestID = log.WithFields(log.Fields{})
+	}
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
 	if err != nil {

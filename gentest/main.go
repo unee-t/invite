@@ -26,7 +26,7 @@ type SQSBatch struct {
 
 func main() {
 
-	for profileID := 2000; profileID <= 2349; profileID++ {
+	for profileID := 1000; profileID <= 1300; profileID++ {
 		invitefilename := fmt.Sprintf("invites-%d.json", profileID)
 		var sqs []SQSBatch
 

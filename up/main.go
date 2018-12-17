@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 
@@ -11,7 +12,8 @@ import (
 
 func main() {
 
-	h, err := invite.New()
+	ctx := context.Background()
+	h, err := invite.New(ctx)
 	if err != nil {
 		log.WithError(err).Fatal("error setting configuration")
 		return
