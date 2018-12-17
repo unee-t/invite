@@ -1,6 +1,7 @@
 package invite
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"testing"
@@ -13,7 +14,7 @@ import (
 var h handler
 
 func TestMain(m *testing.M) {
-	h, _ = New()
+	h, _ = New(context.Background())
 	defer h.DB.Close()
 	os.Exit(m.Run())
 }

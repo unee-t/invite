@@ -229,26 +229,41 @@ func (h handler) queue(invites []Invite) error {
 
 	client := sqs.New(h.Env.Cfg)
 
-	for i, v := range invites {
+	// We can queue as much as 10 at a time
+	for len(invites) > 0 {
+		n := 10
+		if n > len(invites) {
+			n = len(invites)
+		}
+		chunk := invites[:n]
+		invites = invites[n:]
+		h.Log.Infof("Chunk: %+v", chunk)
 
-		// TODO keep a simple map of already queued invites to prevent duplicates
-		jinvite, err := json.Marshal(v)
-		if err != nil {
-			return err
+		var entries []sqs.SendMessageBatchRequestEntry
+		for _, v := range chunk {
+			entry := sqs.SendMessageBatchRequestEntry{Id: aws.String(v.ID)}
+			MessageBody, err := json.Marshal(v)
+			if err != nil {
+				return err
+			}
+			entry.MessageBody = aws.String(string(MessageBody))
+			entries = append(entries, entry)
 		}
 
-		// TODO Batch process?
-		// https://godoc.org/github.com/aws/aws-sdk-go-v2/service/sqs
-		req := client.SendMessageRequest(&sqs.SendMessageInput{
-			MessageBody: aws.String(string(jinvite)),
-			QueueUrl:    aws.String(queue),
+		req := client.SendMessageBatchRequest(&sqs.SendMessageBatchInput{
+			Entries:  entries,
+			QueueUrl: aws.String(queue),
 		})
+
+		h.Log.Infof("Entries: %#v", entries)
+
 		resp, err := req.Send()
 		if err != nil {
-			h.Log.WithError(err).Errorf("failed to run queue %s", v.ID)
+			h.Log.WithError(err).Error("failed to queue")
 			return err
 		}
-		log.Infof("Queued #%d ID: %s SQS resp: %s", i, v.ID, resp)
+		log.Infof("Queued SQS resp: %s", len(chunk), resp)
+
 	}
 
 	return nil
