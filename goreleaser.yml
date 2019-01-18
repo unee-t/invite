@@ -1,15 +1,16 @@
 build:
+  main: ./up/main.go
   env:
     - CGO_ENABLED=0
 
 dockers:
-    - image: uneet/invite
-      tag_templates:
-          - '{{ .Tag }}'
-          - 'latest'
-      extra_files:
-          - sql/
+  - image: uneet/invite
+    tag_templates:
+      - '{{ .Tag }}'
+      - 'latest'
+    extra_files:
+      - sql/
 
 archive:
-    files:
-      - sql/*
+  files:
+    - sql/*
