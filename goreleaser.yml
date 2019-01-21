@@ -4,7 +4,5 @@ build:
     - CGO_ENABLED=0
 
 dockers:
-  - image: uneet/invite
-    tag_templates:
-      - '{{ .Tag }}'
-      - 'latest'
+  - image_templates:
+      - 'uneet/invite:{{ .Tag }}'
