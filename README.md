@@ -1,5 +1,7 @@
 [Process Invitations in the BZ database](https://github.com/unee-t/bugzilla-customisation/wiki/Process-Invitations-in-the-BZ-database)
 
+On [Docker Hub](https://hub.docker.com/r/uneet/invite) for [local development](https://github.com/unee-t/bugzilla-customisation/blob/master/docker-compose.yml)
+
 [![Build Status](https://travis-ci.org/unee-t/invite.svg?branch=master)](https://travis-ci.org/unee-t/invite)
 
 # Different environments

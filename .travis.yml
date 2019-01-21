@@ -19,13 +19,13 @@ script:
   - go test -v ./...
 
 deploy:
- # # dev
- #  - provider: script
- #    script: cd up && make
- #    skip_cleanup: true
- #    on:
- #      branch: master
- # # # demo
+  # dev
+  - provider: script
+    script: cd up && make
+    skip_cleanup: true
+    on:
+      branch: master
+ # # demo
  #  - provider: script
  #    script: AWS_ACCESS_KEY_ID=$AWS_915001051872_ID AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET cd up && make demo
  #    skip_cleanup: true
