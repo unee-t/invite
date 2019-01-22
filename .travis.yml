@@ -28,9 +28,7 @@ deploy:
   # demo
   - provider: script
     script:
-      AWS_ACCESS_KEY_ID=$AWS_915001051872_ID
-      AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET
-      cd web && make demo
+      AWS_ACCESS_KEY_ID=$AWS_915001051872_ID AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET cd web && make demo
     skip_cleanup: true
     on:
       tags: true
@@ -38,9 +36,7 @@ deploy:
   # production
   - provider: script
     script:
-      AWS_ACCESS_KEY_ID=$AWS_192458993663_ID
-      AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET
-      cd web && make prod
+      AWS_ACCESS_KEY_ID=$AWS_192458993663_ID AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET cd web && make prod
     skip_cleanup: true
     on:
       tags: true
