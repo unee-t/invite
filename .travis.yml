@@ -21,24 +21,30 @@ script:
 deploy:
   # dev
   - provider: script
-    script: cd up && make
+    script: cd web && make
     skip_cleanup: true
     on:
       branch: master
- # # demo
- #  - provider: script
- #    script: AWS_ACCESS_KEY_ID=$AWS_915001051872_ID AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET cd up && make demo
- #    skip_cleanup: true
- #    on:
- #      tags: true
- #      branch: master
- # production
-  # - provider: script
-  #   script: AWS_ACCESS_KEY_ID=$AWS_192458993663_ID AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET cd up && make prod
-  #   skip_cleanup: true
-  #   on:
-  #     tags: true
-  #     branch: master
+  # demo
+  - provider: script
+    script:
+      AWS_ACCESS_KEY_ID=$AWS_915001051872_ID
+      AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET
+      cd web && make demo
+    skip_cleanup: true
+    on:
+      tags: true
+      branch: master
+  # production
+  - provider: script
+    script:
+      AWS_ACCESS_KEY_ID=$AWS_192458993663_ID
+      AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET
+      cd web && make prod
+    skip_cleanup: true
+    on:
+      tags: true
+      branch: master
   - provider: script
     skip_cleanup: true
     script: curl -sL https://git.io/goreleaser | bash
