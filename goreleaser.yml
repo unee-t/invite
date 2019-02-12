@@ -1,8 +1,12 @@
 build:
   main: ./web/main.go
+  ldflags:
+    - -s -w -X "invite.version={{.Version}}" -X "invite.commit={{.Commit}}" -X "invite.date={{.Date}}"
   env:
     - CGO_ENABLED=0
 
 dockers:
   - image_templates:
       - uneet/invite
+    build_flag_templates:
+      - "--label=org.label-schema.version={{.Version}}"
