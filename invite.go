@@ -550,6 +550,7 @@ func (h handler) checkIfInvitationExistsAlready(MefeInvitationID string) (invite
 }
 
 func showversion(w http.ResponseWriter, r *http.Request) {
+	log.Infof("%v, commit %v, built at %v", version, commit, date)
 	fmt.Fprintf(w, "%v, commit %v, built at %v", version, commit, date)
 }
 
