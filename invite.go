@@ -49,14 +49,15 @@ type handler struct {
 
 // Invite loosely models ut_invitation_api_data. JSON binding come from MEFE API /api/pending-invitations
 type Invite struct {
-	ID         string `json:"_id"` // mefe_invitation_id (must be unique)
-	InvitedBy  int    `json:"invitedBy"`
-	Invitee    int    `json:"invitee"`
-	Role       string `json:"role"`
-	IsOccupant bool   `json:"isOccupant"`
-	CaseID     int    `json:"caseId"`
-	UnitID     int    `json:"unitId"`
-	Type       string `json:"type"` // invitation type
+	ID               string `json:"_id"` // mefe_invitation_id (must be unique)
+	MefeInvitationID int    `json:"mefeInvitationIdIntValue"`
+	InvitedBy        int    `json:"invitedBy"`
+	Invitee          int    `json:"invitee"`
+	Role             string `json:"role"`
+	IsOccupant       bool   `json:"isOccupant"`
+	CaseID           int    `json:"caseId"`
+	UnitID           int    `json:"unitId"`
+	Type             string `json:"type"` // invitation type
 }
 
 // New setups the configuration assuming various parameters have been setup in the AWS account
@@ -134,8 +135,6 @@ func (h handler) BasicEngine() http.Handler {
 	app.HandleFunc("/health_check", h.ping).Methods("GET")
 	app.HandleFunc("/fail", fail).Methods("GET")
 
-	app.HandleFunc("/check", h.processedAlready).Methods("GET")
-
 	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
 	app.HandleFunc("/", h.handlePull).Methods("GET")
 
@@ -159,6 +158,7 @@ func (h handler) step1Insert(invite Invite) (err error) {
 
 	_, err = h.DB.Exec(
 		`INSERT INTO ut_invitation_api_data (mefe_invitation_id,
+			mefe_invitation_id_int_value,
 			bzfe_invitor_user_id,
 			bz_user_id,
 			user_role_type_id,
@@ -168,8 +168,9 @@ func (h handler) step1Insert(invite Invite) (err error) {
 			invitation_type,
 			is_mefe_only_user,
 			user_more
-		) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
 		invite.ID,
+		invite.MefeInvitationID,
 		invite.InvitedBy,
 		invite.Invitee,
 		roleID,
@@ -188,8 +189,12 @@ func esql(a asset) asset {
 }
 
 func (h handler) runsql(sqlfile asset, invite Invite) (err error) {
-	h.Log.Infof("Running %s with invite id %s with env %d", sqlfile.Name, invite.ID, h.Env.Code)
-	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, h.Env.Code))
+	h.Log.WithFields(log.Fields{
+		"invite":  invite,
+		"sqlfile": sqlfile.Name,
+		"env":     h.Env.Code,
+	}).Info("exec sql")
+	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, invite.MefeInvitationID, h.Env.Code))
 	if err != nil {
 		h.Log.WithError(err).Error("running sql failed")
 	}
@@ -222,6 +227,7 @@ func (h handler) inviteUsertoUnit(invites []Invite) (result error) {
 	}
 	return result
 }
+
 func (h handler) queue(invites []Invite) error {
 
 	var queue = fmt.Sprintf("https://sqs.ap-southeast-1.amazonaws.com/%s/invites", h.Env.AccountID)
@@ -302,7 +308,7 @@ func (h handler) processInvites(invites []Invite) (result error) {
 
 func (h handler) ProcessInvite(invite Invite) (result error) {
 
-	dt, err := h.checkProcessedDatetime(invite.ID)
+	dt, err := h.checkProcessedDatetime(invite)
 	if err == nil && dt.Valid {
 		h.Log.Warnf("already processed %s", time.Since(dt.Time))
 		err = h.markInvitesProcessed([]string{invite.ID})
@@ -314,8 +320,8 @@ func (h handler) ProcessInvite(invite Invite) (result error) {
 		return nil
 	}
 
-	h.Log.Infof("Checking if invitation %s exists already", invite.ID)
-	_, err = h.checkIfInvitationExistsAlready(invite.ID)
+	h.Log.WithField("id", invite.MefeInvitationID).Infof("Checking if invitation exists already")
+	_, err = h.checkIfInvitationExistsAlready(invite)
 	// If there is an error, we know that invite ID does not exist in the ut_invitation_api_data table already
 	if err != nil {
 		h.Log.Infof("Step 1, inserting %s", invite.ID)
@@ -343,7 +349,7 @@ func (h handler) ProcessInvite(invite Invite) (result error) {
 		}
 	}
 
-	dtProcessCheck, err := h.checkProcessedDatetime(invite.ID)
+	dtProcessCheck, err := h.checkProcessedDatetime(invite)
 	// If there is an error, there is no record
 	if err != nil {
 		h.Log.WithError(err).Errorf("no process datetime: %s", invite.ID)
@@ -462,7 +468,7 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
-
+	// TODO: Update to queue
 	log.Infof("handlePush: %s", r.Header.Get("User-Agent"))
 
 	buf := &bytes.Buffer{}
@@ -512,40 +518,14 @@ func (h handler) runProc(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h handler) processedAlready(w http.ResponseWriter, r *http.Request) {
-	MefeInvitationID := r.URL.Query().Get("id")
-	if MefeInvitationID == "" {
-		response.BadRequest(w, "Missing id")
-		return
-	}
-
-	ctx := log.WithFields(log.Fields{
-		"mefe_invitation_id": MefeInvitationID,
-	})
-
-	dt, err := h.checkProcessedDatetime(MefeInvitationID)
-	if err != nil {
-		ctx.WithError(err).Error("checking if processed")
-		response.BadRequest(w, "Not processed")
-		return
-	}
-
-	if dt.Valid {
-		response.OK(w, fmt.Sprintf("Got a date: %s", dt.Time))
-	} else {
-		response.BadRequest(w, "there is no processed_datetime")
-	}
-}
-
-func (h handler) checkProcessedDatetime(MefeInvitationID string) (ProcessedDatetime mysql.NullTime, err error) {
-	err = h.DB.QueryRow("SELECT processed_datetime FROM ut_invitation_api_data WHERE mefe_invitation_id=?", MefeInvitationID).Scan(&ProcessedDatetime)
-	// log.Infof("Valid date time ? %v", ProcessedDatetime.Valid)
+func (h handler) checkProcessedDatetime(i Invite) (ProcessedDatetime mysql.NullTime, err error) {
+	err = h.DB.QueryRow("SELECT processed_datetime FROM ut_invitation_api_data WHERE mefe_invitation_id_int_value=?", i.MefeInvitationID).Scan(&ProcessedDatetime)
 	return ProcessedDatetime, err
 }
 
-func (h handler) checkIfInvitationExistsAlready(MefeInvitationID string) (inviteID string, err error) {
-	err = h.DB.QueryRow("SELECT mefe_invitation_id FROM ut_invitation_api_data WHERE mefe_invitation_id=?",
-		MefeInvitationID).Scan(&inviteID)
+func (h handler) checkIfInvitationExistsAlready(i Invite) (inviteID string, err error) {
+	err = h.DB.QueryRow("SELECT mefe_invitation_id FROM ut_invitation_api_data WHERE mefe_invitation_id_int_value=?",
+		i.MefeInvitationID).Scan(&inviteID)
 	return inviteID, err
 }
 

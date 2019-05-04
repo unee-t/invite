@@ -12,6 +12,7 @@
 #
 # The MEFE invitation id that we want to process:
 	SET @mefe_invitation_id = '%s';
+	SET @mefe_invitation_id_int_value = %d;
 #
 # Environment: Which environment are you creating the unit in?
 #	- 1 is for the DEV/Staging

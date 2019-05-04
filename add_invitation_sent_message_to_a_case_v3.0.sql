@@ -8,6 +8,7 @@
 #
 # The MEFE invitation id that we want to finalize:
 	SET @mefe_invitation_id = '%s';
+	SET @mefe_invitation_id_int_value = %d;
 	SET @environment = %d;
 #
 # The Timestamp when the MEFE invitation was sent:
