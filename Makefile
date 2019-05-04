@@ -5,6 +5,7 @@ devlogs:
 	apex -r $(REGION) --env dev logs -f
 
 dev:
+	go generate
 	@echo $$AWS_ACCESS_KEY_ID
 	apex -r $(REGION) --env dev deploy
 

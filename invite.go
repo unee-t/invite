@@ -189,14 +189,16 @@ func esql(a asset) asset {
 }
 
 func (h handler) runsql(sqlfile asset, invite Invite) (err error) {
+	execSQL := fmt.Sprintf(sqlfile.Content, invite.ID, invite.MefeInvitationID, h.Env.Code)
 	h.Log.WithFields(log.Fields{
 		"invite":  invite,
 		"sqlfile": sqlfile.Name,
 		"env":     h.Env.Code,
+		"SQL":     execSQL,
 	}).Info("exec sql")
-	_, err = h.DB.Exec(fmt.Sprintf(sqlfile.Content, invite.ID, invite.MefeInvitationID, h.Env.Code))
+	_, err = h.DB.Exec(execSQL)
 	if err != nil {
-		h.Log.WithError(err).Error("running sql failed")
+		h.Log.WithError(err).Error("execing sql failed")
 	}
 	return
 }
