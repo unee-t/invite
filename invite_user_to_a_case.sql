@@ -105,5 +105,5 @@
 		UPDATE `ut_invitation_api_data`
 			SET `processed_datetime` = @timestamp
 				, `script` = @this_script
-			WHERE `mefe_invitation_id` = @mefe_invitation_id
+			WHERE `mefe_invitation_id_int_value` = @mefe_invitation_id_int_value
 			;

@@ -116,5 +116,5 @@
 		UPDATE `ut_invitation_api_data`
 			SET `api_post_datetime` = @mefe_invitation_sent
 				, `script` = @this_script
-			WHERE `mefe_invitation_id` = @mefe_invitation_id
+			WHERE `mefe_invitation_id_int_value` = @mefe_invitation_id_int_value
 			;
