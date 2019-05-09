@@ -25,3 +25,5 @@ require (
 	golang.org/x/crypto v0.0.0-20190506204251-e1dfcc566284 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
+
+replace github.com/satori/go.uuid v1.2.0 => github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
