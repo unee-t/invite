@@ -34,7 +34,11 @@ func handler(ctx context.Context, evt events.SQSEvent) (string, error) {
 		var ivt invite.Invite
 		err := json.Unmarshal([]byte(v.Body), &ivt)
 
-		log.Infof("Processing invite ID %s, Message ID: %s", ivt.ID, v.MessageId)
+		log.WithFields(log.Fields{
+			"invite": ivt,
+			"msgid":  v.MessageId,
+		}).Info("processing invite via lambda")
+
 		err = h.ProcessInvite(ivt)
 		if err != nil {
 			return "", err
