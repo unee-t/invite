@@ -68,7 +68,7 @@ func New(ctx context.Context) (h handler, err error) {
 	ctxObj, ok := lambdacontext.FromContext(ctx)
 	if ok {
 		logWithRequestID = log.WithFields(log.Fields{
-			"RequestID": ctxObj.AwsRequestID,
+			"requestID": ctxObj.AwsRequestID,
 		})
 	} else {
 		logWithRequestID = log.WithFields(log.Fields{})
