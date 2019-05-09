@@ -16,13 +16,18 @@ require (
 	github.com/labstack/gommon v0.2.8 // indirect
 	github.com/mattn/go-colorable v0.1.1 // indirect
 	github.com/mattn/go-isatty v0.0.7 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.3.0
 	github.com/tj/assert v0.0.0-20171129193455-018094318fb0 // indirect
 	github.com/tj/go v1.8.6
-	github.com/unee-t/env v0.0.0-20190328010323-d7125cae867e
+	github.com/unee-t/env v0.0.0-20190509070656-005b78d1f24e
 	github.com/valyala/fasttemplate v1.0.1 // indirect
 	golang.org/x/crypto v0.0.0-20190506204251-e1dfcc566284 // indirect
+	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c // indirect
+	golang.org/x/sys v0.0.0-20190508220229-2d0786266e9c // indirect
+	golang.org/x/text v0.3.2 // indirect
+	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
 
