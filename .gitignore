@@ -1,3 +1,4 @@
 up.json
+vendor
 gin-bin
 gentest/*.json
