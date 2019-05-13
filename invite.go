@@ -205,13 +205,15 @@ func (h handler) inviteUsertoUnit(invites []Invite) (result error) {
 			return err
 		}
 
+		ctx.Info("step1")
+
 		// Run invite_user_in_a_role_in_a_unit.sql
 		err = h.runsql(invite_user_in_a_role_in_a_unit, invite)
-
 		if err != nil {
 			ctx.WithError(err).Error("failed to run invite_user_in_a_role_in_a_unit.sql")
 			return err
 		}
+		ctx.Info("runsql")
 
 	}
 	return result
@@ -458,7 +460,6 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 
 func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 	// TODO: Update to queue
-	log.Infof("handlePush: %s", r.Header.Get("User-Agent"))
 
 	buf := &bytes.Buffer{}
 	tee := io.TeeReader(r.Body, buf)
@@ -475,8 +476,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Input %+v", invites)
-	log.Infof("Length %d", len(invites))
+	log.WithField("len(invites)", len(invites)).Info("handlePush")
 
 	if len(invites) < 1 {
 		response.BadRequest(w, "Empty payload")
