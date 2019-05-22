@@ -1,9 +1,5 @@
 REGION:=ap-southeast-1
 
-devlogs:
-	@echo $$AWS_ACCESS_KEY_ID
-	apex -r $(REGION) --env dev logs -f
-
 dev:
 	go generate
 	@echo $$AWS_ACCESS_KEY_ID
@@ -20,6 +16,10 @@ demologs:
 prod:
 	@echo $$AWS_ACCESS_KEY_ID
 	apex -r $(REGION) --env prod deploy
+
+devlogs:
+	@echo $$AWS_ACCESS_KEY_ID
+	apex -r $(REGION) --env dev logs -f
 
 prodlogs:
 	@echo $$AWS_ACCESS_KEY_ID

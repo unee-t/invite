@@ -461,6 +461,10 @@ func (h handler) handlePull(w http.ResponseWriter, r *http.Request) {
 func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 	// TODO: Update to queue
 
+	h.Log = log.WithFields(log.Fields{
+		"requestID": r.Header.Get("X-Request-Id"),
+	})
+
 	buf := &bytes.Buffer{}
 	tee := io.TeeReader(r.Body, buf)
 	defer r.Body.Close()
@@ -476,7 +480,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.WithField("len(invites)", len(invites)).Info("handlePush")
+	h.Log.WithField("len(invites)", len(invites)).Info("handlePush")
 
 	if len(invites) < 1 {
 		response.BadRequest(w, "Empty payload")
@@ -485,6 +489,7 @@ func (h handler) handlePush(w http.ResponseWriter, r *http.Request) {
 
 	err = h.inviteUsertoUnit(invites)
 	if err != nil {
+		h.Log.WithError(err).Error("push inviteUsertoUnit")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
