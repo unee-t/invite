@@ -27,21 +27,19 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tj/go/http/response"
 	"github.com/unee-t/env"
 )
 
 // These get autofilled by goreleaser
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
-)
+var pingPollingFreq = 5 * time.Second
 
 type handler struct {
-	DSN            string // e.g. "bugzilla:secret@tcp(auroradb.dev.unee-t.com:3306)/bugzilla?multiStatements=true&sql_mode=TRADITIONAL"
-	Domain         string // e.g. https://dev.case.unee-t.com
-	APIAccessToken string // e.g. O8I9svDTizOfLfdVA5ri
+	DSN            string
+	Domain         string
+	APIAccessToken string
 	DB             *sql.DB
 	Env            env.Env
 	Log            *log.Entry
@@ -111,16 +109,42 @@ func New(ctx context.Context) (h handler, err error) {
 		return
 	}
 
-	return
+	microservicecheck := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "microservice",
+			Help: "Version with DB ping check",
+		},
+		[]string{
+			"commit",
+		},
+	)
 
+	version := os.Getenv("UP_COMMIT")
+
+	go func() {
+		for {
+			if h.DB.Ping() == nil {
+				microservicecheck.WithLabelValues(version).Set(1)
+			} else {
+				microservicecheck.WithLabelValues(version).Set(0)
+			}
+			time.Sleep(pingPollingFreq)
+		}
+	}()
+
+	err = prometheus.Register(microservicecheck)
+	if err != nil {
+		log.WithError(err).Warn("prom already registered")
+		return h, nil
+	}
+	return
 }
 
 func (h handler) BasicEngine() http.Handler {
 
 	app := mux.NewRouter()
-	app.HandleFunc("/version", showversion).Methods("GET")
-	app.HandleFunc("/health_check", h.ping).Methods("GET")
 	app.HandleFunc("/fail", fail).Methods("GET")
+	app.Handle("/metrics", promhttp.Handler()).Methods("GET")
 
 	// Pulls data from MEFE (doesn't really need to be protected, since input is already trusted)
 	app.HandleFunc("/", h.handlePull).Methods("GET")
@@ -128,7 +152,11 @@ func (h handler) BasicEngine() http.Handler {
 	// Push a POST of a JSON payload of the invite (ut_invitation_api_data)
 	app.HandleFunc("/", h.handlePush).Methods("POST")
 
-	return app
+	if os.Getenv("UP_STAGE") == "" {
+		// local dev, get around permissions
+		return app
+	}
+	return env.Protect(app, h.APIAccessToken)
 }
 
 func (h handler) lookupRoleID(roleName string) (IDRoleType int, err error) {
@@ -523,21 +551,7 @@ func (h handler) checkIfInvitationExistsAlready(i Invite) (inviteID string, err 
 	return inviteID, err
 }
 
-func showversion(w http.ResponseWriter, r *http.Request) {
-	log.Infof("%v, commit %v, built at %v", version, commit, date)
-	fmt.Fprintf(w, "%v, commit %v, built at %v", version, commit, date)
-}
-
 func fail(w http.ResponseWriter, r *http.Request) {
 	log.Warn("5xx")
 	http.Error(w, "5xx", http.StatusInternalServerError)
-}
-
-func (h handler) ping(w http.ResponseWriter, r *http.Request) {
-	err := h.DB.Ping()
-	if err != nil {
-		h.Log.WithError(err).Error("failed to ping database")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	fmt.Fprintf(w, "OK")
 }
