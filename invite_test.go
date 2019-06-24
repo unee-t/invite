@@ -1,15 +1,29 @@
 package invite
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/appleboy/gofight"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/stretchr/testify/assert"
 )
+
+type checkFunc func(*httptest.ResponseRecorder) error
+
+func hasStatus(want int) checkFunc {
+	return func(rec *httptest.ResponseRecorder) error {
+		if rec.Code != want {
+			return fmt.Errorf("expected status %d, found %d", want, rec.Code)
+		}
+		return nil
+	}
+}
 
 var h handler
 
@@ -49,28 +63,46 @@ func Test_handler_lookupRoleID(t *testing.T) {
 	}
 }
 
-// Test route for the sake of https://github.com/unee-t/frontend/issues/297#issuecomment-398604129
-func TestPushRoute(t *testing.T) {
-	r := gofight.New()
-	r.POST("/").
-		SetJSON(gofight.D{
-			"foo": "bar",
-		}).
-		// turn on the debug mode.
-		SetDebug(true).
-		Run(h.BasicEngine(), func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
-			assert.Equal(t, http.StatusBadRequest, r.Code)
-		})
-}
+func TestPush(t *testing.T) {
 
-func TestEmptyPayloadPushRoute(t *testing.T) {
-	r := gofight.New()
-	r.POST("/").
-		SetBody("[]").
-		// turn on the debug mode.
-		SetDebug(true).
-		Run(h.BasicEngine(), func(r gofight.HTTPResponse, rq gofight.HTTPRequest) {
-			assert.Equal(t, "Empty payload\n", r.Body.String())
-			assert.Equal(t, http.StatusBadRequest, r.Code)
+	check := func(fns ...checkFunc) []checkFunc { return fns }
+
+	payload := func(u []Invite) io.Reader {
+		requestByte, _ := json.Marshal(u)
+		return bytes.NewReader(requestByte)
+	}
+
+	tests := [...]struct {
+		name    string
+		verb    string
+		path    string
+		payload io.Reader
+		h       func(w http.ResponseWriter, r *http.Request)
+		checks  []checkFunc
+	}{
+		{
+			"Empty payload",
+			"POST",
+			"/create",
+			payload([]Invite{}),
+			h.handlePush,
+			check(hasStatus(400)),
+		},
+	}
+	for _, tt := range tests {
+		r, err := http.NewRequest(tt.verb, tt.path, tt.payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Run(tt.name, func(t *testing.T) {
+			h := http.HandlerFunc(tt.h)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, r)
+			for _, check := range tt.checks {
+				if err := check(rec); err != nil {
+					t.Error(err)
+				}
+			}
 		})
+	}
 }
