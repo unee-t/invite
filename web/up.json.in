@@ -1,17 +1,23 @@
 {
   "name": "processinvitations",
+# This is a hardcoded variable <-- should be moved
   "profile": "uneet-dev",
+# END This is a hardcoded variable
   "stages": {
     "production": {
+# This is a hardcoded variable <-- should be moved
       "domain": "invite.dev.unee-t.com",
       "zone": "dev.unee-t.com"
+# END This is a hardcoded variable
     }
   },
   "proxy": {
     "timeout": 25
   },
   "regions": [
+# This is a hardcoded variable <-- should be moved
     "ap-southeast-1"
+# END This is a hardcoded variable
   ],
   "error_pages": {
     "disable": true
@@ -39,7 +45,9 @@
       "name": "email.backend",
       "type": "email",
       "emails": [
+# This is a hardcoded variable <-- should be moved
         "kai.hendry+invite@unee-t.com"
+# END This is a hardcoded variable
       ]
     }
   ],

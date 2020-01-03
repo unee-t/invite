@@ -1,3 +1,27 @@
+# Variables needed for this script are:
+
+# Case 1: Stored on Travis Settings
+  # For all environments:
+    # - DOCKER_CI_REPO_NAME <-- do we need that?
+    # - DOCKER_USERNAME
+    # - DOCKER_PASSWORD
+
+  #For dev environment:
+    # - AWS_ACCOUNT_USER_ID_DEV
+    # - AWS_ACCOUNT_SECRET_DEV
+
+  #For Demo environment:
+    # - AWS_ACCOUNT_USER_ID_DEMO
+    # - AWS_ACCOUNT_SECRET_DEMO
+
+  #For Prod environment:
+    # - AWS_ACCOUNT_USER_ID_PROD
+    # - AWS_ACCOUNT_SECRET_PROD
+
+# Case 2: Created when Travis CI runs ??
+    # - TRAVIS_TAG
+    # - TRAVIS_OS_NAME
+
 sudo: required
 language: go
 
@@ -13,7 +37,7 @@ install:
   - sudo apt-get install jq -y
 
 after_success:
-  - test -n "$TRAVIS_TAG" && docker login -u=uneetci -p="$DOCKER_PASSWORD"
+  - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
 script:
   - go test -v ./...
@@ -21,21 +45,21 @@ script:
 deploy:
   # dev
   - provider: script
-    script: cd web && make
+    script: cd web && AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEV AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEV ./deploy.sh dev
     skip_cleanup: true
     on:
       branch: master
   # demo
   - provider: script
     script:
-      cd web && AWS_ACCESS_KEY_ID=$AWS_915001051872_ID AWS_SECRET_ACCESS_KEY=$AWS_915001051872_SECRET make demo
+      cd web && AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEMO AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEMO ./deploy.sh demo
     skip_cleanup: true
     on:
       tags: true
   # production
   - provider: script
     script:
-      cd web && AWS_ACCESS_KEY_ID=$AWS_192458993663_ID AWS_SECRET_ACCESS_KEY=$AWS_192458993663_SECRET make prod
+      cd web && AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_PROD AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_PROD ./deploy.sh prod
     skip_cleanup: true
     on:
       tags: true

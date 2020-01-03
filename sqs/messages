@@ -1,2 +1,4 @@
 #!/bin/bash
+# This is a hardcoded variable <-- should be moved
 aws --profile uneet-dev sqs get-queue-attributes --queue-url https://sqs.ap-southeast-1.amazonaws.com/812644853088/invites --attribute-names ApproximateNumberOfMessages
+# This is a hardcoded variable

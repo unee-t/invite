@@ -1,4 +1,6 @@
 #!/bin/bash
+# This is a hardcoded variable <-- should be moved
 aws --profile uneet-dev sqs delete-message --queue-url https://sqs.ap-southeast-1.amazonaws.com/812644853088/invites \
+# END This is a hardcoded variable
 	--receipt-handle "$1"
 

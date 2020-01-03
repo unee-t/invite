@@ -1,3 +1,4 @@
+# This is a hardcoded variable <-- should be moved
 DEVUPJSON = '.profile |= "uneet-dev" \
 		  |.stages.production |= (.domain = "invite.dev.unee-t.com" | .zone = "dev.unee-t.com") \
 		  | .actions[0].emails |= ["kai.hendry+invitedev@unee-t.com"] \
@@ -15,6 +16,7 @@ PRODUPJSON = '.profile |= "uneet-prod" \
 		  | .actions[0].emails |= ["kai.hendry+inviteprod@unee-t.com"] \
 		  | .lambda.vpc.subnets |= [ "subnet-0df289b6d96447a84", "subnet-0e41c71ad02ee7e99", "subnet-01cb9ee064743ac56" ] \
 		  | .lambda.vpc.security_groups |= [ "sg-9f5b5ef8" ]'
+# END This is a hardcoded variable
 
 dev:
 	@echo $$AWS_ACCESS_KEY_ID
@@ -32,13 +34,21 @@ prod:
 	up deploy production
 
 testdev:
+# This is a hardcoded variable <-- should be moved
 	curl -H "Authorization: Bearer $(shell aws --profile uneet-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.dev.unee-t.com/version
+# END This is a hardcoded variable
 
 testdemo:
+# This is a hardcoded variable <-- should be moved
 	curl -H "Authorization: Bearer $(shell aws --profile uneet-demo ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.demo.unee-t.com/version
+# END This is a hardcoded variable
 
 testprod:
+# This is a hardcoded variable <-- should be moved
 	curl -H "Authorization: Bearer $(shell aws --profile uneet-prod ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.unee-t.com/version
+# This is a hardcoded variable
 
 testping:
+# This is a hardcoded variable <-- should be moved
 	curl -i -H "Authorization: Bearer $(shell aws --profile uneet-prod ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.unee-t.com/health_check
+# This is a hardcoded variable

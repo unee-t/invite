@@ -7,6 +7,8 @@ build:
 
 dockers:
   - image_templates:
+# This is a hardcoded variable <-- should be moved    
       - uneet/invite
+# END This is a hardcoded variable
     build_flag_templates:
       - "--label=org.label-schema.version={{.Version}}"

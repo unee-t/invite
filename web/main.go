@@ -8,7 +8,9 @@ import (
 	"github.com/apex/log"
 	jsonloghandler "github.com/apex/log/handlers/json"
 	"github.com/apex/log/handlers/text"
+	// This is a hardcoded variable <-- should be moved
 	"github.com/unee-t/invite"
+	// END This is a hardcoded variable
 )
 
 func init() {
