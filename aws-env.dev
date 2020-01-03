@@ -1,0 +1,36 @@
+#!/bin/bash
+## This file stores all environment variables for the DEV environment for this repo
+
+# First, we create a procedure to retrieve the variables from the AWS parameter store
+# Make sure to 
+#   - configure your AWS CLI accordingly
+#   - update the profile you need to use to access these variables if needed
+
+    getparam () {
+        #When we run this command, we get the issue: no matches found: Parameters[0].Value.
+        #aws --profile ins-dev ssm get-parameters --names "$1" --with-decryption --query Parameters[0].Value --output text
+        #So I changed the command like below, and It works!
+        aws --profile ins-dev ssm get-parameters --names "$1" --with-decryption  --output text | awk '{print $6}'
+    }
+    
+# We prepare the hardcoded variables that we will need to deploy what's needed
+
+    export STAGE=dev
+
+# Variables that are maintained in the AWS parameter store for the environment:
+
+    export AWS_REGION=$(getparam DEFAULT_REGION)
+    export DEFAULT_SECURITY_GROUP=$(getparam DEFAULT_SECURITY_GROUP)
+    export PRIVATE_SUBNET_1=$(getparam PRIVATE_SUBNET_1)
+    export PRIVATE_SUBNET_2=$(getparam PRIVATE_SUBNET_2)
+    export PRIVATE_SUBNET_3=$(getparam PRIVATE_SUBNET_3)
+    export MYSQL_PASSWORD=$(getparam UNTEDB_ROOT_PASS)
+    export MYSQL_USER=$(getparam UNTEDB_ROOT_USER)
+    export MYSQL_HOST=$(getparam UNTEDB_HOST)
+    export UNTE_DB_NAME=$(getparam UNTE_DB_NAME)
+    export S3_BUCKET_NAME=$(getparam S3_BUCKET_NAME)
+
+# Variables that are built from other variables:
+
+    export AWS_PROFILE=$(getparam INSTALLATION_ID)-$STAGE
+    export PRIVATE_SUBNETS=$PRIVATE_SUBNET_1,$PRIVATE_SUBNET_2,$PRIVATE_SUBNET_3
