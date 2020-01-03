@@ -24,7 +24,9 @@ func (a asset) init() asset {
 
 func (a asset) importPath() string {
 	// filled at code gen time
+// This is a hardcoded variable <-- should be moved to aws-env.[stage] file
 	return "github.com/unee-t/invite"
+// END This is a hardcoded variable
 }
 
 func (a asset) Open() (*os.File, error) {
