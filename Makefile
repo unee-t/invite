@@ -17,4 +17,4 @@ dev:
 
 devlogs:
 	@echo $$AWS_ACCESS_KEY_ID
-	apex -r $(REGION) --env dev logs -f
+	apex -r $(REGION) --env dev logs

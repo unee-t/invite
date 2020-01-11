@@ -1,2 +1,2 @@
 #!/bin/bash
-aws --profile uneet-dev sqs get-queue-attributes --queue-url https://sqs.ap-southeast-1.amazonaws.com/812644853088/invites --attribute-names ApproximateNumberOfMessages
+aws --profile ins-dev sqs get-queue-attributes --queue-url https://sqs.ap-southeast-1.amazonaws.com/182387550209/invites --attribute-names ApproximateNumberOfMessages
