@@ -8,7 +8,7 @@ import (
 	"github.com/apex/log"
 	jsonloghandler "github.com/apex/log/handlers/json"
 	"github.com/apex/log/handlers/text"
-	"github.com/unee-t/invite"
+	"github.com/unee-t-ins/invite"
 )
 
 func init() {

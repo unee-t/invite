@@ -30,7 +30,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tj/go/http/response"
-	"github.com/unee-t/env"
+	"github.com/unee-t-ins/env"
 )
 
 // These get autofilled by goreleaser
@@ -282,7 +282,7 @@ func (h handler) queue(invites []Invite) error {
 
 		h.Log.Infof("Entries: %#v", entries)
 
-		resp, err := req.Send()
+		resp, err := req.Send(context.TODO())
 		if err != nil {
 			h.Log.WithError(err).Error("failed to queue")
 			return err

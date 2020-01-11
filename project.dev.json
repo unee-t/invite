@@ -1,18 +1,18 @@
 {
   "name": "invitefromqueue",
-  "profile": "uneet-dev",
+  "profile": "ins-dev",
   "memory": 128,
   "timeout": 60,
-  "role": "arn:aws:iam::812644853088:role/invitefromqueue_lambda_function",
+  "role": "arn:aws:iam::182387550209:role/invitefromqueue_lambda_function",
   "environment": {},
   "vpc": {
     "subnets": [
-      "subnet-0ff046ccc4e3b6281",
-      "subnet-0938728dfb344b970",
-      "subnet-0e123bd457c082cff"
+      "subnet-07c9e20d6d4e35a64",
+      "subnet-0f1579f2b82518454",
+      "subnet-05f258f76ec0a2bd5"
     ],
     "securityGroups": [
-      "sg-66390301"
+      "sg-d8dde8a6"
     ]
   }
 }

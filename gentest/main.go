@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/unee-t/invite"
+	"github.com/unee-t-ins/invite"
 )
 
 type SQSBatch struct {

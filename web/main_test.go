@@ -13,7 +13,7 @@ import (
 
 	"github.com/apex/log"
 	uuid "github.com/satori/go.uuid"
-	"github.com/unee-t/invite"
+	"github.com/unee-t-ins/invite"
 )
 
 func TestPOST500(t *testing.T) {
