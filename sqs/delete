@@ -1,4 +1,4 @@
 #!/bin/bash
-aws --profile ins-dev sqs delete-message --queue-url https://sqs.ap-southeast-1.amazonaws.com/182387550209/invites \
+aws --profile uneet-dev sqs delete-message --queue-url https://sqs.ap-southeast-1.amazonaws.com/812644853088/invites \
 	--receipt-handle "$1"
 

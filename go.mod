@@ -13,7 +13,7 @@ require (
 	github.com/prometheus/client_golang v1.3.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/tj/go v1.8.6
-	github.com/unee-t-ins/env v0.2.2
+	github.com/unee-t-ins/env v0.2.1
 	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
