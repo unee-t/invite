@@ -6,7 +6,7 @@ import (
 
 	"github.com/apex/log"
 	jsonhandler "github.com/apex/log/handlers/json"
-	"github.com/unee-t-ins/invite"
+	"github.com/unee-t/invite"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
