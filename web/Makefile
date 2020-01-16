@@ -10,10 +10,10 @@ DEVUPJSON = '.profile |= "$(PROFILE)" \
 		  | .lambda.vpc.security_groups |= [ "$(call ssm,DEFAULT_SECURITY_GROUP)" ]'
 
 dev:
-	@echo $$AWS_ACCESS_KEY_ID
+	aws configure --profile $(PROFILE) list
 	jq $(DEVUPJSON) up.json.in > up.json
 	up deploy production
 
 testdev:
-	curl -H "Authorization: Bearer $(shell aws --profile ins-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,STAGE).$(call ssm,DOMAIN)/metrics
+	curl -H "Authorization: Bearer $(shell aws --profile $(PROFILE)-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,STAGE).$(call ssm,DOMAIN)/metrics
 

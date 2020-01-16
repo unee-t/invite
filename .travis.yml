@@ -2,6 +2,11 @@ language: go
 
 before_install:
   - curl -sf https://up.apex.sh/install | sudo sh
+  - pip install --user awscli
+  - export PATH=$PATH:$HOME/.local/bin
+  - aws configure set profile.${AWS_PROFILE_DEV}.aws_access_key_id $AWS_ACCOUNT_USER_ID_DEV
+  - aws configure set profile.${AWS_PROFILE_DEV}.aws_secret_access_key $AWS_ACCOUNT_SECRET_DEV
+  - aws configure set profile.${AWS_PROFILE_DEV}.region $AWS_DEFAULT_REGION
 
 install:
   - go get -t ./...
@@ -10,7 +15,7 @@ install:
 deploy:
   # dev
   - provider: script
-    script: cd web && AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEV AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEV make
+    script: cd web && make PROFILE=${AWS_PROFILE_DEV}
     skip_cleanup: true
     on:
       branch: master
