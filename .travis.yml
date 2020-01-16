@@ -9,14 +9,13 @@ before_install:
   - aws configure set profile.${AWS_PROFILE_DEV}.region $AWS_DEFAULT_REGION
 
 install:
-  - go get -t ./...
   - sudo apt-get install jq -y
 
 deploy:
   # dev
   - provider: script
     script: cd web && make PROFILE=${AWS_PROFILE_DEV}
-    skip_cleanup: true
+    edge: true
     on:
       branch: master
 
