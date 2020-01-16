@@ -72,7 +72,7 @@ func New(ctx context.Context) (h handler, err error) {
 		logWithRequestID = log.WithFields(log.Fields{})
 	}
 
-	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("ins-dev"))
 	if err != nil {
 		log.WithError(err).Fatal("setting up credentials")
 		return
