@@ -4,11 +4,12 @@ import (
 	"context"
 	"net/http"
 	"os"
-
 	"github.com/apex/log"
 	jsonloghandler "github.com/apex/log/handlers/json"
 	"github.com/apex/log/handlers/text"
-	"github.com/unee-t/invite"
+	// This is a hardcoded variable <-- should be moved
+	"github.com/unee-t-ins/invite"
+	// END This is a hardcoded variable
 )
 
 func init() {

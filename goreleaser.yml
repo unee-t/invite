@@ -1,3 +1,7 @@
+# Variables needed for this script are stored on Travis Settings
+  # For all environments:
+    # - DOCKER_CI_REPO_NAME
+
 build:
   main: ./web/main.go
   ldflags:
@@ -7,6 +11,6 @@ build:
 
 dockers:
   - image_templates:
-      - uneet/invite
+      - DOCKER_CI_REPO_NAME
     build_flag_templates:
       - "--label=org.label-schema.version={{.Version}}"

@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/unee-t/invite"
+// This is a hardcoded variable <-- should be moved
+	"github.com/unee-t-ins/invite"
+// END This is a hardcoded variable
 )
 
 type SQSBatch struct {

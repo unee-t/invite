@@ -1,10 +1,10 @@
 {
   "name": "processinvitations",
-  "profile": "uneet-dev",
+  "profile": "ins-dev",
   "stages": {
     "production": {
-      "domain": "invite.dev.unee-t.com",
-      "zone": "dev.unee-t.com"
+      "domain": "invite.dev.ins.unee-t.com",
+      "zone": "dev.ins.unee-t.com"
     }
   },
   "proxy": {

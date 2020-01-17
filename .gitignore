@@ -1,4 +1,5 @@
 up.json
+project.json
 vendor
 gin-bin
 gentest/*.json

@@ -13,7 +13,9 @@ import (
 
 	"github.com/apex/log"
 	uuid "github.com/satori/go.uuid"
-	"github.com/unee-t/invite"
+	// This is a hardcoded variable <-- should be moved
+	"github.com/unee-t-ins/invite"
+	// END This is a hardcoded variable
 )
 
 func TestPOST500(t *testing.T) {
