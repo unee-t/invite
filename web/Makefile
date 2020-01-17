@@ -17,7 +17,7 @@ PRODUPJSON = '.profile |= "uneet-prod" \
 		  | .lambda.vpc.security_groups |= [ "sg-9f5b5ef8" ]'
 
 dev:
-	@echo $$AWS_ACCESS_KEY_ID
+	aws configure --profile $(PROFILE) list
 	jq $(DEVUPJSON) up.json.in > up.json
 	up deploy production
 
@@ -32,13 +32,13 @@ prod:
 	up deploy production
 
 testdev:
-	curl -H "Authorization: Bearer $(shell aws --profile uneet-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.dev.unee-t.com/version
+	curl -H "Authorization: Bearer $(shell aws --profile $(PROFILE)-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,STAGE).$(call ssm,DOMAIN)/metrics
 
 testdemo:
-	curl -H "Authorization: Bearer $(shell aws --profile uneet-demo ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.demo.unee-t.com/version
+	curl -H "Authorization: Bearer $(shell aws --profile $(PROFILE) ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,STAGE).$(call ssm,DOMAIN)/metrics
 
 testprod:
-	curl -H "Authorization: Bearer $(shell aws --profile uneet-prod ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.unee-t.com/version
+	curl -H "Authorization: Bearer $(shell aws --profile $(PROFILE) ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,DOMAIN)/metrics
 
 testping:
 	curl -i -H "Authorization: Bearer $(shell aws --profile uneet-prod ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.unee-t.com/health_check
