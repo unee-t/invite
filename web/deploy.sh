@@ -1,30 +1,9 @@
 #!/bin/bash
 
-# This script is created to deploy invite API
-# It's executed as described in the `.travis.yml` file
+# This script is created to [add more information here]
+# It is executed when [add more information here]
 #
-# Variable is the environment like dev, demo or prod
-# To run this script, run this command: ./deploy.sh [STAGE] 
-# where STAGE is 
-#   - `dev` for the DEV environment
-#   - `demo` for the DEMO environment
-#   - `prod` for the PROD environment
-
-# The variables are set when `.travis.yml` runs.
-# - TRAVIS_PROFILE
-# - TRAVIS_AWS_ACCESS_KEY_ID
-# - TRAVIS_AWS_SECRET_ACCESS_KEY
-# - TRAVIS_AWS_DEFAULT_REGION
-
-echo this is deploy.sh
-echo Profile
-echo $TRAVIS_PROFILE
-echo Access key
-echo $TRAVIS_AWS_ACCESS_KEY_ID
-echo Region
-echo $TRAVIS_AWS_DEFAULT_REGION
-
-#Step 1: Setup AWS CLI Profile
+##Step 1: Setup AWS CLI Profile
 # This is in case there is no aws cli profile
 # in that case, the aws profile needs to be created from scratch.
 # This happens when:
@@ -32,7 +11,8 @@ echo $TRAVIS_AWS_DEFAULT_REGION
 #	  We rely on the Travis CI settings that have been called when the
 #	  .travis.yml script is called.
 #	- The user has not configured his machine properly.
-
+#
+# Step 1: Setup AWS CLI
 if ! aws configure --profile $TRAVIS_PROFILE list
 then
     # We tell the user about the issue
@@ -58,6 +38,5 @@ then
 
 fi
 
-#Step 2: Run Makefile.
-
-make $1
+# Step 2: Run Make
+    make $1

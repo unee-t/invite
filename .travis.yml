@@ -1,80 +1,50 @@
 # Variables needed for this script are:
-# Case 1: Stored on Travis Settings
-#  For all environments:
-#     - DOCKER_CI_REPO_NAME
-#     - DOCKER_USERNAME
-#     - DOCKER_PASSWORD
-#   For dev environment:
-#    - AWS_ACCOUNT_USER_ID_DEV
-#    - AWS_ACCOUNT_SECRET_DEV
-#    - AWS_PROFILE_DEV
-#   For Demo environment:
-#    - AWS_ACCOUNT_USER_ID_DEMO
-#    - AWS_ACCOUNT_SECRET_DEMO
-#    - AWS_PROFILE_DEMO
-#   For Prod environment:
-#    - AWS_ACCOUNT_USER_ID_PROD
-#    - AWS_ACCOUNT_SECRET_PROD
-#    - AWS_PROFILE_PROD
-#
-# Case 2: Created when Travis CI runs
-#   - TRAVIS_TAG
-#   - TRAVIS_OS_NAME
 
-sudo: required
+# Case 1: Stored on Travis Settings
+  #For dev environment:
+    # - AWS_ACCOUNT_USER_ID_DEV
+    # - AWS_ACCOUNT_SECRET_DEV
+    # - AWS_PROFILE_DEV
+
+  #For Demo environment:
+    # - AWS_ACCOUNT_USER_ID_DEMO
+    # - AWS_ACCOUNT_SECRET_DEMO
+    # - AWS_PROFILE_DEMO
+
+  #For Prod environment:
+    # - AWS_ACCOUNT_USER_ID_PROD
+    # - AWS_ACCOUNT_SECRET_PROD
+    # - AWS_PROFILE_PROD
+
 language: go
 
 before_install:
   - curl -sf https://up.apex.sh/install | sudo sh
-  - sudo up upgrade
   - pip install --user awscli
   - export PATH=$PATH:$HOME/.local/bin
-  - aws configure set profile.${AWS_PROFILE_DEV}.aws_access_key_id $AWS_ACCOUNT_USER_ID_DEV
-  - aws configure set profile.${AWS_PROFILE_DEV}.aws_secret_access_key $AWS_ACCOUNT_SECRET_DEV
-  - aws configure set profile.${AWS_PROFILE_DEV}.region $AWS_DEFAULT_REGION
-
-services:
-  - docker
 
 install:
   - go get -t ./...
   - sudo apt-get install jq -y
 
-# after_success:
-#     - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-  
-# script:
-#   - go test -v ./...
-
 deploy:
-
   # dev
- - provider: script
-   script: TRAVIS_PROFILE=$AWS_PROFILE_DEV TRAVIS_AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEV TRAVIS_AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEV TRAVIS_AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION ./deploy.sh dev
-   edge: true
-   on:
+  - provider: script
+    script: cd web && TRAVIS_PROFILE=$AWS_PROFILE_DEV TRAVIS_AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEV TRAVIS_AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEV TRAVIS_AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION ./deploy.sh dev
+    edge: true
+    on:
       branch: master
-
   # demo
- - provider: script
-   script: TRAVIS_PROFILE=$AWS_PROFILE_DEMO TRAVIS_AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEMO TRAVIS_AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEMO TRAVIS_AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION ./deploy.sh demo
-   edge: true
-   on:
+  - provider: script
+    script: cd web && TRAVIS_PROFILE=$AWS_PROFILE_DEMO TRAVIS_AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_DEMO TRAVIS_AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_DEMO TRAVIS_AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION ./deploy.sh demo
+    edge: true
+    on:
       tags: true
-
-  # production
- - provider: script
-   script: TRAVIS_PROFILE=$AWS_PROFILE_PROD TRAVIS_AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_PROD TRAVIS_AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_PROD TRAVIS_AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION ./deploy.sh prod
-   edge: true
-   on:
+  #prod
+  - provider: script
+    script: cd web && TRAVIS_PROFILE=$AWS_PROFILE_PROD TRAVIS_AWS_ACCESS_KEY_ID=$AWS_ACCOUNT_USER_ID_PROD TRAVIS_AWS_SECRET_ACCESS_KEY=$AWS_ACCOUNT_SECRET_PROD TRAVIS_AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION ./deploy.sh prod
+    edge: true
+    on:
       tags: true
-
-  # Some other stuff that we need...
- - provider: script
-   script: curl -sL https://git.io/goreleaser | bash
-   on:
-      tags: true
-      condition: $TRAVIS_OS_NAME = linux
-
 env:
   - GO111MODULE=on
