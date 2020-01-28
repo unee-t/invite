@@ -6,6 +6,10 @@ On [Docker Hub](https://hub.docker.com/r/uneet/invite) for [local development](h
 
 # Different environments
 
+##################################
+# This needs to be reviewed <-- these are hardcoded values that are environment specific.
+##################################
+
 This is codified over at: https://github.com/unee-t/env
 
 ## dev environment
@@ -25,6 +29,10 @@ This is codified over at: https://github.com/unee-t/env
 * AWS account id: 192458993663
 * profile: uneet-prod
 * https://invite.unee-t.com
+
+##################################
+# END This needs to be reviewed
+##################################
 
 # Test plan
 

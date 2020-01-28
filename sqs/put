@@ -1,3 +1,5 @@
 #!/bin/bash
 test "$1" || exit
-aws --profile uneet-dev sqs send-message --queue-url https://sqs.ap-southeast-1.amazonaws.com/812644853088/invites --message-body "$1"
+# This is a hardcoded variable <-- should be moved
+aws --profile ins-dev sqs send-message --queue-url https://sqs.ap-southeast-1.amazonaws.com/182387550209/invites --message-body "$1"
+# END This is a hardcoded variable

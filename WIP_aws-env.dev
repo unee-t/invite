@@ -1,0 +1,42 @@
+#!/bin/bash
+## This file stores all environment variables for the DEV environment for this repo
+
+# First, we create a procedure to retrieve the variables from the AWS parameter store
+# Make sure to 
+#   - configure your AWS CLI accordingly
+#   - update the profile you need to use to access these variables if needed
+
+    getparam () {
+        #When we run this command, we get the issue: no matches found: Parameters[0].Value.
+        #aws --profile ins-dev ssm get-parameters --names "$1" --with-decryption --query Parameters[0].Value --output text
+        #So I changed the command like below, and It works!
+        aws --profile ins-dev ssm get-parameters --names "$1" --with-decryption  --output text | awk '{print $6}'
+    }
+    
+# We prepare the hardcoded variables that we will need to deploy what's needed
+
+    export STAGE=dev
+
+# Variables that are maintained in the AWS parameter store for the environment:
+
+    export AWS_REGION=$(getparam DEFAULT_REGION)
+	export DOMAIN=$(getparam DOMAIN)
+	export INSTALLATION_ID=$(getparam INSTALLATION_ID)
+
+	export API_ACCESS_TOKEN=$(getparam API_ACCESS_TOKEN)
+
+    export DEFAULT_SECURITY_GROUP=$(getparam DEFAULT_SECURITY_GROUP)
+    export PRIVATE_SUBNET_1=$(getparam PRIVATE_SUBNET_1)
+    export PRIVATE_SUBNET_2=$(getparam PRIVATE_SUBNET_2)
+    export PRIVATE_SUBNET_3=$(getparam PRIVATE_SUBNET_3)
+    export LAMBDA_TO_RDS_SECURITY_GROUP=$(getparam LAMBDA_TO_RDS_SECURITY_GROUP)
+    export IAM_ROLE_INVITE_FROM_QUEUE=$(getparam IAM_ROLE_INVITE_FROM_QUEUE)
+
+# Variables that are built from other variables:
+
+    export AWS_PROFILE=$INSTALLATION_ID-$STAGE
+    export PRIVATE_SUBNETS=$PRIVATE_SUBNET_1,$PRIVATE_SUBNET_2,$PRIVATE_SUBNET_3
+
+# NOTE: For `aws-env.prod`, remove the $STAGE variable.
+    export EMAIL_NOTIFICATION_LAMBDA_INVITE=$STAGE.$INSTALLATION_ID+invite@unee-t.com
+    export ZONE=$STAGE.$DOMAIN

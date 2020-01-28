@@ -30,7 +30,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tj/go/http/response"
-	"github.com/unee-t/env"
+// This is a hardcoded variable <-- should be moved
+	"github.com/unee-t-ins/env"
+// END This is a hardcoded variable <-- should be moved
 )
 
 // These get autofilled by goreleaser
@@ -72,7 +74,7 @@ func New(ctx context.Context) (h handler, err error) {
 		logWithRequestID = log.WithFields(log.Fields{})
 	}
 
-	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("uneet-dev"))
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("ins-dev"))
 	if err != nil {
 		log.WithError(err).Fatal("setting up credentials")
 		return
@@ -248,10 +250,10 @@ func (h handler) inviteUsertoUnit(invites []Invite) (result error) {
 }
 
 func (h handler) queue(invites []Invite) error {
-
+// This is a hardcoded variable <-- should be moved
 	var queue = fmt.Sprintf("https://sqs.ap-southeast-1.amazonaws.com/%s/invites", h.Env.AccountID)
 	h.Log.Infof("%d invites to queue: %s", len(invites), queue)
-
+// END This is a hardcoded variable
 	client := sqs.New(h.Env.Cfg)
 
 	// We can queue as much as 10 at a time
@@ -282,7 +284,7 @@ func (h handler) queue(invites []Invite) error {
 
 		h.Log.Infof("Entries: %#v", entries)
 
-		resp, err := req.Send()
+		resp, err := req.Send(context.TODO())
 		if err != nil {
 			h.Log.WithError(err).Error("failed to queue")
 			return err

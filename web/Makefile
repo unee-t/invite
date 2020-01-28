@@ -1,44 +1,61 @@
-DEVUPJSON = '.profile |= "uneet-dev" \
-		  |.stages.production |= (.domain = "invite.dev.unee-t.com" | .zone = "dev.unee-t.com") \
-		  | .actions[0].emails |= ["kai.hendry+invitedev@unee-t.com"] \
-		  | .lambda.vpc.subnets |= [ "subnet-0e123bd457c082cff", "subnet-0ff046ccc4e3b6281", "subnet-0e123bd457c082cff" ] \
-		  | .lambda.vpc.security_groups |= [ "sg-0b83472a34bc17400", "sg-0f4dadb564041855b" ]'
+# This script is called by the `deploy.sh` file in the /web folder (this folder)
+# We use this to deploy the environments with Travis CI
 
-DEMOUPJSON = '.profile |= "uneet-demo" \
-		  |.stages.production |= (.domain = "invite.demo.unee-t.com" | .zone = "demo.unee-t.com") \
-		  | .actions[0].emails |= ["kai.hendry+invitedemo@unee-t.com"] \
-		  | .lambda.vpc.subnets |= [ "subnet-0bdef9ce0d0e2f596", "subnet-091e5c7d98cd80c0d", "subnet-0fbf1eb8af1ca56e3" ] \
-		  | .lambda.vpc.security_groups |= [ "sg-6f66d316" ]'
+# We create a function to simplify getting variables for aws parameter store.
 
-PRODUPJSON = '.profile |= "uneet-prod" \
-		  |.stages.production |= (.domain = "invite.unee-t.com" | .zone = "unee-t.com") \
-		  | .actions[0].emails |= ["kai.hendry+inviteprod@unee-t.com"] \
-		  | .lambda.vpc.subnets |= [ "subnet-0df289b6d96447a84", "subnet-0e41c71ad02ee7e99", "subnet-01cb9ee064743ac56" ] \
-		  | .lambda.vpc.security_groups |= [ "sg-9f5b5ef8" ]'
+define ssm
+$(shell aws --profile $(TRAVIS_PROFILE) ssm get-parameters --names $1 --with-decryption --query Parameters[0].Value --output text)
+endef
+
+# We prepare variables for up in UPJSON and PRODUPJSON.
+# These variables are comming from AWS Parameter Store
+# - STAGE
+# - DOMAIN
+# - EMAIL_FOR_NOTIFICATION_GENERIC
+# - PRIVATE_SUBNET_1
+# - PRIVATE_SUBNET_2
+# - PRIVATE_SUBNET_3
+# - DEFAULT_SECURITY_GROUP
+
+UPJSON = '.profile |= "$(TRAVIS_PROFILE)" \
+		  |.stages.production |= (.domain = "invite.$(call ssm,STAGE).$(call ssm,DOMAIN)" | .zone = "$(call ssm,STAGE).$(call ssm,DOMAIN)") \
+		  | .actions[0].emails |= ["invite+$(call ssm,EMAIL_FOR_NOTIFICATION_GENERIC)"] \
+		  | .lambda.vpc.subnets |= [ "$(call ssm,PRIVATE_SUBNET_1)", "$(call ssm,PRIVATE_SUBNET_2)", "$(call ssm,PRIVATE_SUBNET_3)" ] \
+		  | .lambda.vpc.security_groups |= [ "$(call ssm,DEFAULT_SECURITY_GROUP)" ]'
+
+#UPJSON for Production
+
+PRODUPJSON = '.profile |= "$(TRAVIS_PROFILE)" \
+		  |.stages.production |= (.domain = "invite.$(call ssm,DOMAIN)" | .zone = "$(call ssm,DOMAIN)") \
+		  | .actions[0].emails |= ["invite+$(call ssm,EMAIL_FOR_NOTIFICATION_GENERIC)"] \
+		  | .lambda.vpc.subnets |= [ "$(call ssm,PRIVATE_SUBNET_1)", "$(call ssm,PRIVATE_SUBNET_2)", "$(call ssm,PRIVATE_SUBNET_3)" ] \
+		  | .lambda.vpc.security_groups |= [ "$(call ssm,DEFAULT_SECURITY_GROUP)" ]'
+
+# We have everything, we can run up now.
 
 dev:
-	@echo $$AWS_ACCESS_KEY_ID
-	jq $(DEVUPJSON) up.json.in > up.json
+	aws configure --profile $(TRAVIS_PROFILE) list
+	jq $(UPJSON) up.json.in > up.json
 	up deploy production
 
 demo:
-	@echo $$AWS_ACCESS_KEY_ID
-	jq $(DEMOUPJSON) up.json.in > up.json
+	aws configure --profile $(TRAVIS_PROFILE) list
+	jq $(UPJSON) up.json.in > up.json
 	up deploy production
 
 prod:
-	@echo $$AWS_ACCESS_KEY_ID
+	aws configure --profile $(TRAVIS_PROFILE) list
 	jq $(PRODUPJSON) up.json.in > up.json
 	up deploy production
 
 testdev:
-	curl -H "Authorization: Bearer $(shell aws --profile uneet-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.dev.unee-t.com/version
+	curl -H "Authorization: Bearer $(shell aws --profile $(TRAVIS_PROFILE)-dev ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,STAGE).$(call ssm,DOMAIN)/metrics
 
-testdemo:
-	curl -H "Authorization: Bearer $(shell aws --profile uneet-demo ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.demo.unee-t.com/version
+testdemo:	
+	curl -H "Authorization: Bearer $(shell aws --profile $(TRAVIS_PROFILE) ssm get-parameters --names $(API_ACCESS_TOKEN) --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,STAGE).$(call ssm,DOMAIN)/metrics	
 
-testprod:
-	curl -H "Authorization: Bearer $(shell aws --profile uneet-prod ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.unee-t.com/version
+testprod:	
+	curl -H "Authorization: Bearer $(shell aws --profile $(TRAVIS_PROFILE) ssm get-parameters --names $(API_ACCESS_TOKEN) --with-decryption --query Parameters[0].Value --output text)" https://invite.$(call ssm,DOMAIN)/metrics	
 
-testping:
-	curl -i -H "Authorization: Bearer $(shell aws --profile uneet-prod ssm get-parameters --names API_ACCESS_TOKEN --with-decryption --query Parameters[0].Value --output text)" https://invite.unee-t.com/health_check
+testping:	
+	curl -i -H "Authorization: Bearer $(shell aws --profile $(TRAVIS_PROFILE) ssm get-parameters --names $(API_ACCESS_TOKEN) --with-decryption --query Parameters[0].Value --output text)" https://invite.$(ZONE)/health_check 

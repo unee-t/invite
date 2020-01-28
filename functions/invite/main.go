@@ -6,8 +6,9 @@ import (
 
 	"github.com/apex/log"
 	jsonhandler "github.com/apex/log/handlers/json"
-	"github.com/unee-t/invite"
-
+// This is a hardcoded variable <-- should be moved
+	"github.com/unee-t-ins/invite"
+// END This is a hardcoded variable <-- should be moved
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
